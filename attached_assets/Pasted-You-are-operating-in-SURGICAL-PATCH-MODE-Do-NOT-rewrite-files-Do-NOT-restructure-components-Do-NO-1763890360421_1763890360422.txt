@@ -1,0 +1,177 @@
+You are operating in SURGICAL PATCH MODE.
+Do NOT rewrite files.
+Do NOT restructure components.
+Do NOT change unrelated logic.
+Apply minimal diff patches only.
+
+🎯 GOAL
+
+Implement Option B UX in components/planner/ai-coach-panel.tsx and (if needed) hooks/use-ai-coach-engine.ts:
+
+The AI Coach panel must operate under a strict, clean 3-state machine:
+
+STATE 0 — HIDDEN
+
+The panel should NOT render at all when:
+
+No exercises exist
+
+OR exercises exist but none contain meaningful data
+
+Meaningful Data Definition:
+Any exercise where at least one of the following is true:
+
+sets > 0
+
+reps > 0
+
+loadKg > 0
+
+rpe > 0
+
+notes not empty
+
+STATE 1 — LOADING
+
+Show a visible panel with:
+
+Strength Trend: Analyzing…
+Form Alert: —
+Recommendations: —
+
+
+When:
+
+Meaningful data exists
+
+AND analysis is running
+
+STATE 2 — ANALYZED
+
+Show full analysis block with trend / alerts / recommendations.
+
+🔎 REQUIRED BEHAVIOR (STRICT)
+✔ 1. Must trigger re-analysis when ANY training data changes
+
+Training changes that must trigger fresh analysis:
+
+sets
+
+reps
+
+loadKg
+
+rpe
+
+notes
+
+exercise added
+
+exercise removed
+
+Use a deep hash signature, e.g.:
+
+const signature = JSON.stringify(day.training)
+
+
+And compare previous signature to current one.
+
+✔ 2. Demo Mode Behavior
+
+If API key missing OR equals "TEST":
+
+Return demo analysis
+
+Respect the same state machine
+
+DO NOT show "To enable real AI" inside the panel unless analysis finishes successfully and API key was missing
+
+✔ 3. Panel Visibility Fix
+
+Panel must NOT persist when:
+
+User clears exercises
+
+User deletes exercises
+
+User resets day
+
+Training becomes empty
+
+✔ 4. DO NOT change:
+
+Theme system
+
+Layout
+
+Planner context
+
+Exercise update logic
+
+Any other component
+
+No CSS rewrite
+
+No structural refactor
+
+Only fix:
+ai-coach-panel.tsx (main)
+and adjust use-ai-coach-engine.ts only if strictly needed for the state machine.
+
+📌 PATCH INSTRUCTIONS
+
+Apply the following in order with tiny diffs:
+
+PATCH A — Compute meaningful exercises
+
+Inside ai-coach-panel.tsx:
+
+Add:
+
+const meaningfulExercises = day.training.filter(ex => {
+  return (ex.sets || ex.reps || ex.loadKg || ex.rpe || (ex.notes && ex.notes.trim() !== ""));
+});
+
+PATCH B — State machine visibility
+
+Replace any existing visibility guard with:
+
+if (meaningfulExercises.length === 0 && !isAnalyzing) return null;
+
+PATCH C — Hash signature
+
+Use:
+
+const signature = JSON.stringify(meaningfulExercises);
+
+
+Track previous signature with useRef.
+Trigger analysis when signature changes.
+
+PATCH D — Loading UI
+
+Inside the panel, when isAnalyzing === true, display:
+
+Strength Trend: “Analyzing…”
+Form Alert: “—”
+Recommendations: “—”
+
+PATCH E — Demo Mode messaging
+
+Only show:
+
+“To enable real AI coaching, add your Anthropic API key…”
+
+AFTER analysis finishes AND apiKey is missing, not during loading, not during hidden.
+
+⚠️ HARD LIMITS
+
+DO NOT modify planner, daily-log, theme, or use-planner files.
+
+DO NOT rewrite the entire AI coach panel.
+
+DO NOT introduce new folders or components.
+
+DO NOT rename anything.
+
+Keep code changes surgical and minimal.

@@ -16,12 +16,14 @@ interface AiCoachPanelProps {
 function hasMeaningfulData(day: DayEntry | undefined): boolean {
   if (!day?.training || day.training.length === 0) return false
   
-  // At least one exercise must have sets, reps, or load filled in
+  // At least one exercise must have sets, reps, load, RPE, or notes
   return day.training.some((ex) => {
     const hasSets = ex.sets && ex.sets > 0
     const hasReps = ex.reps && ex.reps > 0
     const hasLoad = ex.loadKg && ex.loadKg > 0
-    return hasSets || hasReps || hasLoad
+    const hasRpe = ex.rpe && ex.rpe > 0
+    const hasNotes = ex.notes && ex.notes.trim() !== ""
+    return hasSets || hasReps || hasLoad || hasRpe || hasNotes
   })
 }
 
@@ -101,8 +103,9 @@ export function AiCoachPanel({ weekIndex, dayIndex }: AiCoachPanelProps) {
     }
   }, [analysis?.strengthTrend, day, loading])
 
-  // FIX 1: Only show panel if exercises have meaningful data AND analysis exists
-  if (!hasMeaningfulData(day) || !analysis) return null
+  // STATE MACHINE: Show panel if meaningful data exists OR is loading
+  const hasData = hasMeaningfulData(day)
+  if (!hasData && !loading) return null
 
   return (
     <Card
