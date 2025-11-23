@@ -1,0 +1,19 @@
+{
+  "node": {
+    "403cf6cf67f2e6e23b63319d0e70582770bf8af300": {
+      "workers": {
+        "app/page": {
+          "moduleId": "(action-browser)/./node_modules/.pnpm/next@15.5.4_react-dom@19.1.0_react@19.1.0__react@19.1.0/node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2Fhome%2Frunner%2Fworkspace%2Fhooks%2Fuse-ai-coach-engine.ts%22%2C%5B%7B%22id%22%3A%22403cf6cf67f2e6e23b63319d0e70582770bf8af300%22%2C%22exportedName%22%3A%22analyzeWorkout%22%2C%22filename%22%3A%22hooks%2Fuse-ai-coach-engine.ts%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        }
+      },
+      "layer": {
+        "app/page": "action-browser"
+      },
+      "filename": "hooks/use-ai-coach-engine.ts",
+      "exportedName": "analyzeWorkout"
+    }
+  },
+  "edge": {},
+  "encryptionKey": "cY7LWEXUhMr7cmPbo3GrnJ4iOe8N7DwceMsMP+BkK7E="
+}
