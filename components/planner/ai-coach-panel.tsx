@@ -160,8 +160,8 @@ export function AiCoachPanel({ weekIndex, dayIndex }: AiCoachPanelProps) {
         <div
           className="p-3 rounded-lg border"
           style={{
-            backgroundColor: analysis.formAlert === "No alerts" ? theme.background + "40" : theme.primary + "15",
-            borderColor: analysis.formAlert === "No alerts" ? theme.border + "20" : theme.primary + "40",
+            backgroundColor: (analysis?.formAlert === "No alerts") ? theme.background + "40" : theme.primary + "15",
+            borderColor: (analysis?.formAlert === "No alerts") ? theme.border + "20" : theme.primary + "40",
           }}
         >
           <div className="text-xs font-mono uppercase tracking-widest mb-1" style={{ color: theme.accent }}>
@@ -170,20 +170,39 @@ export function AiCoachPanel({ weekIndex, dayIndex }: AiCoachPanelProps) {
           <div
             className="text-sm leading-relaxed"
             style={{
-              color: analysis.formAlert === "No alerts" ? theme.text + "99" : theme.primary,
-              fontWeight: analysis.formAlert === "No alerts" ? 400 : 600,
+              color: (analysis?.formAlert === "No alerts") ? theme.text + "99" : theme.primary,
+              fontWeight: (analysis?.formAlert === "No alerts") ? 400 : 600,
             }}
           >
-            {analysis.formAlert}
+            {loading ? (
+              <span className="text-xs" style={{ color: theme.text + "88" }}>
+                Analyzing...
+              </span>
+            ) : !analysis ? (
+              <span className="text-xs" style={{ color: theme.text + "88" }}>
+                —
+              </span>
+            ) : (
+              analysis.formAlert || "—"
+            )}
           </div>
         </div>
 
         {/* Recommendations */}
-        {analysis.recommendations && analysis.recommendations.length > 0 && (
-          <div className="space-y-2">
-            <div className="text-xs font-mono uppercase tracking-widest" style={{ color: theme.accent }}>
-              Recommendations
-            </div>
+        <div className="space-y-2">
+          <div className="text-xs font-mono uppercase tracking-widest" style={{ color: theme.accent }}>
+            Recommendations
+          </div>
+          {loading ? (
+            <ul className="space-y-1.5">
+              <li className="text-sm flex gap-2 p-2 rounded" style={{ backgroundColor: theme.background + "60", color: theme.text + "DD" }}>
+                <span style={{ color: theme.accent }}>→</span>
+                <span className="text-xs" style={{ color: theme.text + "88" }}>Analyzing...</span>
+              </li>
+            </ul>
+          ) : !analysis?.recommendations || analysis.recommendations.length === 0 ? (
+            <div className="text-sm" style={{ color: theme.text + "88" }}>—</div>
+          ) : (
             <ul className="space-y-1.5">
               {analysis.recommendations.map((rec, idx) => (
                 <li
@@ -194,6 +213,29 @@ export function AiCoachPanel({ weekIndex, dayIndex }: AiCoachPanelProps) {
                     color: theme.text + "DD",
                   }}
                 >
+                  <span style={{ color: theme.accent }}>→</span>
+                  <span>{rec}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* Demo Mode Message - PATCH D: Only show after analysis completes */}
+        {!loading && analysis && analysis.strengthTrend?.includes("DEMO MODE") && (
+          <div
+            className="p-3 rounded-lg border"
+            style={{
+              backgroundColor: theme.accent + "10",
+              borderColor: theme.accent + "30",
+            }}
+          >
+            <div className="text-xs font-mono uppercase tracking-widest mb-2" style={{ color: theme.accent }}>
+              Enable Real AI
+            </div>
+            <ul className="text-sm space-y-1.5" style={{ color: theme.text + "CC" }}>
+              {analysis.recommendations?.map((rec, idx) => (
+                <li key={idx} className="flex gap-2">
                   <span style={{ color: theme.accent }}>→</span>
                   <span>{rec}</span>
                 </li>
