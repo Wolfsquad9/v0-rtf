@@ -1,9 +1,9 @@
 {
   "node": {
-    "40efe8f48cd135fa0456b3392bcbdb0e21b6d51d0d": {
+    "400c615dc6a407eae70cd21f6cebfe05efa02bafdb": {
       "workers": {
         "app/page": {
-          "moduleId": "(action-browser)/./node_modules/.pnpm/next@15.5.4_react-dom@19.1.0_react@19.1.0__react@19.1.0/node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2Fhome%2Frunner%2Fworkspace%2Fhooks%2Fuse-ai-coach-engine.ts%22%2C%5B%7B%22id%22%3A%2240efe8f48cd135fa0456b3392bcbdb0e21b6d51d0d%22%2C%22exportedName%22%3A%22analyzeWorkout%22%2C%22filename%22%3A%22hooks%2Fuse-ai-coach-engine.ts%22%7D%5D%5D%5D&__client_imported__=true!",
+          "moduleId": "(action-browser)/./node_modules/.pnpm/next@15.5.4_react-dom@19.1.0_react@19.1.0__react@19.1.0/node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2Fhome%2Frunner%2Fworkspace%2Fhooks%2Fuse-ai-coach-engine.ts%22%2C%5B%7B%22id%22%3A%22400c615dc6a407eae70cd21f6cebfe05efa02bafdb%22%2C%22exportedName%22%3A%22analyzeWorkout%22%2C%22filename%22%3A%22hooks%2Fuse-ai-coach-engine.ts%22%7D%5D%5D%5D&__client_imported__=true!",
           "async": false
         }
       },
@@ -15,5 +15,5 @@
     }
   },
   "edge": {},
-  "encryptionKey": "1ZOv5TZNj9HdosgP9QfF5UPDQ2ScJmbUhDFORyuBGy0="
+  "encryptionKey": "ic0cYk81uE8G2MbwLdtD2KFrC9i5CPpc6CTMhhln6+A="
 }

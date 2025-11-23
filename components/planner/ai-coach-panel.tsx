@@ -16,13 +16,13 @@ interface AiCoachPanelProps {
 function hasMeaningfulData(day: DayEntry | undefined): boolean {
   if (!day?.training || day.training.length === 0) return false
   
-  // At least one exercise must have sets, reps, load, RPE, or notes
+  // At least one exercise must have sets, reps, load, RPE, or rpeNotes
   return day.training.some((ex) => {
     const hasSets = ex.sets && ex.sets > 0
     const hasReps = ex.reps && ex.reps > 0
     const hasLoad = ex.loadKg && ex.loadKg > 0
     const hasRpe = ex.rpe && ex.rpe > 0
-    const hasNotes = ex.notes && ex.notes.trim() !== ""
+    const hasNotes = ex.rpeNotes && ex.rpeNotes.trim() !== ""
     return hasSets || hasReps || hasLoad || hasRpe || hasNotes
   })
 }
@@ -146,13 +146,11 @@ export function AiCoachPanel({ weekIndex, dayIndex }: AiCoachPanelProps) {
             Strength Trend
           </div>
           <div className="text-sm leading-relaxed" style={{ color: theme.text + "DD" }}>
-            {loading ? (
-              <span className="text-xs" style={{ color: theme.text + "88" }}>
-                Analyzing...
-              </span>
-            ) : (
-              analysis.strengthTrend
-            )}
+            {loading
+              ? "Analyzing..."
+              : analysis
+              ? analysis.strengthTrend
+              : "—"}
           </div>
         </div>
 
@@ -174,17 +172,11 @@ export function AiCoachPanel({ weekIndex, dayIndex }: AiCoachPanelProps) {
               fontWeight: (analysis?.formAlert === "No alerts") ? 400 : 600,
             }}
           >
-            {loading ? (
-              <span className="text-xs" style={{ color: theme.text + "88" }}>
-                Analyzing...
-              </span>
-            ) : !analysis ? (
-              <span className="text-xs" style={{ color: theme.text + "88" }}>
-                —
-              </span>
-            ) : (
-              analysis.formAlert || "—"
-            )}
+            {loading
+              ? "Analyzing..."
+              : analysis
+              ? analysis.formAlert
+              : "—"}
           </div>
         </div>
 
@@ -194,35 +186,24 @@ export function AiCoachPanel({ weekIndex, dayIndex }: AiCoachPanelProps) {
             Recommendations
           </div>
           {loading ? (
-            <ul className="space-y-1.5">
-              <li className="text-sm flex gap-2 p-2 rounded" style={{ backgroundColor: theme.background + "60", color: theme.text + "DD" }}>
-                <span style={{ color: theme.accent }}>→</span>
-                <span className="text-xs" style={{ color: theme.text + "88" }}>Analyzing...</span>
-              </li>
+            <ul className="list-disc pl-4 space-y-1">
+              <li>Analyzing...</li>
+              <li>Analyzing...</li>
+              <li>Analyzing...</li>
             </ul>
-          ) : !analysis?.recommendations || analysis.recommendations.length === 0 ? (
-            <div className="text-sm" style={{ color: theme.text + "88" }}>—</div>
-          ) : (
-            <ul className="space-y-1.5">
-              {analysis.recommendations.map((rec, idx) => (
-                <li
-                  key={idx}
-                  className="text-sm flex gap-2 p-2 rounded"
-                  style={{
-                    backgroundColor: theme.background + "60",
-                    color: theme.text + "DD",
-                  }}
-                >
-                  <span style={{ color: theme.accent }}>→</span>
-                  <span>{rec}</span>
-                </li>
+          ) : analysis ? (
+            <ul className="list-disc pl-4 space-y-1">
+              {analysis.recommendations?.map((rec, i) => (
+                <li key={i}>{rec}</li>
               ))}
             </ul>
+          ) : (
+            <span>—</span>
           )}
         </div>
 
         {/* Demo Mode Message - PATCH D: Only show after analysis completes */}
-        {!loading && analysis && analysis.strengthTrend?.includes("DEMO MODE") && (
+        {!loading && analysis && analysis?.strengthTrend?.includes("DEMO MODE") && (
           <div
             className="p-3 rounded-lg border"
             style={{
@@ -234,7 +215,7 @@ export function AiCoachPanel({ weekIndex, dayIndex }: AiCoachPanelProps) {
               Enable Real AI
             </div>
             <ul className="text-sm space-y-1.5" style={{ color: theme.text + "CC" }}>
-              {analysis.recommendations?.map((rec, idx) => (
+              {analysis?.recommendations?.map((rec, idx) => (
                 <li key={idx} className="flex gap-2">
                   <span style={{ color: theme.accent }}>→</span>
                   <span>{rec}</span>
