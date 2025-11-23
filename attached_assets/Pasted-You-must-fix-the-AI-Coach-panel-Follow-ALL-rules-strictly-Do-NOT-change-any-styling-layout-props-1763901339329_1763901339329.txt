@@ -1,0 +1,130 @@
+You must fix the AI Coach panel. Follow ALL rules strictly. Do NOT change any styling, layout, props, or external logic. Only correct the decision logic, state guards, conditional rendering, and API/analysis flow.
+
+==================================================
+## 🔥 MISSION: FULL CORRECTION OF AI COACH PANEL
+==================================================
+
+You MUST edit ONLY this file:
+
+➡ components/planner/ai-coach-panel.tsx
+
+Your job is to deliver ONE final, corrected, complete file with NO missing imports and NO TypeScript errors.
+
+Do NOT modify any other file. Do NOT create new files. Do NOT change filenames. Do NOT move code.
+
+==================================================
+## ❌ CURRENT BUGS THAT YOU MUST FIX
+==================================================
+
+### 1) RUNTIME ERROR:
+“Cannot read properties of null (reading 'strengthTrend')”
+→ caused by rendering before analysis exists
+
+### 2) INFINITE POST LOOP  
+→ AI re-runs runAnalysis() on every render  
+→ useEffect dependencies wrong  
+→ missing guard inside runAnalysis()
+
+### 3) PANEL ALWAYS VISIBLE  
+→ even when user hasn’t entered any sets/reps/load/rpe/notes  
+→ should be hidden unless meaningful data exists
+
+### 4) DEMO MODE APPEARS DURING LOADING  
+→ must appear ONLY after loading finishes  
+→ must NOT appear when no content  
+→ must NOT appear during loading state
+
+### 5) Missing loading placeholders  
+→ Strength Trend has placeholder  
+→ Form Alert and Recommendations do NOT
+
+### 6) State machine incorrectly implemented
+
+==================================================
+## 🎯 THE REQUIRED FINAL BEHAVIOR
+==================================================
+
+### STATE 1 — No meaningful data (panel hidden)
+- loading === false  
+- meaningfulData === false  
+- `return null` (hide entire panel)
+
+Meaningful data means ANY of the following is present:
+- sets  
+- reps  
+- load  
+- RPE  
+- notes  
+
+### STATE 2 — Loading (panel visible with placeholders)
+Show the full panel, but every section displays:
+- "Analyzing…"
+
+Rules:
+- Do NOT read analysis.*  
+- Do NOT show demo mode text  
+- Do NOT show real recommendations
+
+### STATE 3 — Done (panel visible with real or demo data)
+- loading === false  
+- meaningfulData === true  
+- analysis !== null
+
+IF no API key → show DEMO MODE block ABOVE the results  
+IF API key exists → show real analysis
+
+==================================================
+## 🔒 USEEFFECT RULES
+==================================================
+
+Inside `useEffect`, you MUST follow these rules:
+
+1. DO NOT run analysis when:
+   - loading === true
+   - meaningfulData === false
+   - analysis already exists
+
+2. useEffect MUST depend ONLY on:
+   - meaningfulData
+   - entries (the session data)
+   - apiKey
+
+3. runAnalysis() MUST include an internal guard:
+     if (loading) return;
+
+==================================================
+## 🔒 RENDERING SAFETY RULES
+==================================================
+
+ALL usages of:
+- analysis.strengthTrend  
+- analysis.formAlert  
+- analysis.recommendations  
+
+must be NULL-SAFE.
+
+Either use:
+- optional chaining  
+- or conditional blocks  
+
+NEVER assume analysis is non-null.
+
+==================================================
+## 🚨 OUTPUT FORMAT REQUIREMENTS
+==================================================
+
+You MUST output a **single final message** containing:
+
+### ✔ The ENTIRE corrected file  
+### ✔ Valid TypeScript  
+### ✔ No placeholders  
+### ✔ No pseudo-code  
+### ✔ No ellipses (…)  
+### ✔ No commentary before or after  
+### ✔ Only the code file
+
+==================================================
+## NOW EXECUTE
+==================================================
+
+Rewrite the file EXACTLY following the rules above.

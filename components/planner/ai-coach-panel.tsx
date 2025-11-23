@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { usePlanner } from "@/hooks/use-planner"
 import { getThemeColors } from "@/lib/themes"
@@ -12,11 +12,9 @@ interface AiCoachPanelProps {
   dayIndex: number
 }
 
-// Helper: Check if exercises have meaningful data
 function hasMeaningfulData(day: DayEntry | undefined): boolean {
   if (!day?.training || day.training.length === 0) return false
   
-  // At least one exercise must have sets, reps, load, RPE, or rpeNotes
   return day.training.some((ex) => {
     const hasSets = ex.sets && ex.sets > 0
     const hasReps = ex.reps && ex.reps > 0
@@ -27,13 +25,18 @@ function hasMeaningfulData(day: DayEntry | undefined): boolean {
   })
 }
 
-// Helper: Create data signature for re-analysis detection
 function createDataSignature(day: DayEntry | undefined): string {
   if (!day?.training) return ""
   
-  return day.training
-    .map((ex) => `${ex.name}|${ex.sets}|${ex.reps}|${ex.loadKg}|${ex.rpe}`)
-    .join("||")
+  return JSON.stringify(
+    day.training.map((ex) => ({
+      sets: ex.sets,
+      reps: ex.reps,
+      loadKg: ex.loadKg,
+      rpe: ex.rpe,
+      rpeNotes: ex.rpeNotes,
+    }))
+  )
 }
 
 export function AiCoachPanel({ weekIndex, dayIndex }: AiCoachPanelProps) {
@@ -41,71 +44,72 @@ export function AiCoachPanel({ weekIndex, dayIndex }: AiCoachPanelProps) {
   const theme = getThemeColors(state?.theme || "dark-knight")
   const [analysis, setAnalysis] = useState<CoachAnalysis | null>(null)
   const [loading, setLoading] = useState(false)
-  const [lastSignature, setLastSignature] = useState<string>("")
+  const lastSignatureRef = useRef<string>("")
 
   const day = state?.weeks?.[weekIndex]?.days?.[dayIndex]
+  const meaningfulData = hasMeaningfulData(day)
 
-  // FIX 1 & 2: Trigger analysis when exercises have meaningful data AND data changes
   useEffect(() => {
-    const currentSignature = createDataSignature(day)
-    const hasData = hasMeaningfulData(day)
-    const dataChanged = currentSignature !== lastSignature && currentSignature !== ""
+    if (!meaningfulData) {
+      setAnalysis(null)
+      lastSignatureRef.current = ""
+      return
+    }
 
-    if (hasData && dataChanged) {
+    const currentSignature = createDataSignature(day)
+    const signatureChanged = currentSignature !== lastSignatureRef.current
+
+    if (!signatureChanged || loading) {
+      return
+    }
+
+    setLoading(true)
+    analyzeWorkout(day as DayEntry)
+      .then((result) => {
+        setAnalysis(result)
+        lastSignatureRef.current = currentSignature
+      })
+      .catch((err) => {
+        console.error("[v0] Coach panel error:", err)
+        setAnalysis({
+          strengthTrend: "Analysis error",
+          formAlert: "Unable to generate",
+          recommendations: [],
+        })
+      })
+      .finally(() => setLoading(false))
+  }, [meaningfulData, day])
+
+  useEffect(() => {
+    const isDemoMode = analysis?.strengthTrend?.includes("DEMO MODE")
+    
+    if (!isDemoMode || !meaningfulData || loading) {
+      return
+    }
+
+    const pollInterval = setInterval(() => {
+      if (loading) return
+      
       setLoading(true)
+      const currentSignature = createDataSignature(day)
       
       analyzeWorkout(day as DayEntry)
         .then((result) => {
           setAnalysis(result)
-          // ARCHITECT FIX: Only update signature AFTER successful analysis
-          setLastSignature(currentSignature)
+          lastSignatureRef.current = currentSignature
         })
         .catch((err) => {
-          console.error("[v0] Coach panel error:", err)
-          setAnalysis({
-            strengthTrend: "Analysis error",
-            formAlert: "Unable to generate",
-            recommendations: [],
-          })
-          // ARCHITECT FIX: Don't update signature on error - allow retries
+          console.error("[v0] Coach panel demo retry:", err)
         })
         .finally(() => setLoading(false))
-    } else if (!hasData) {
-      // FIX 1: Clear analysis if no meaningful data exists
-      setAnalysis(null)
-      setLastSignature("")
-    }
-  }, [day, lastSignature])
+    }, 5000)
 
-  // ARCHITECT FIX: Auto-retry when in demo mode to detect API key addition
-  useEffect(() => {
-    const isDemoMode = analysis?.strengthTrend?.includes("DEMO MODE")
-    const hasData = hasMeaningfulData(day)
-    
-    if (isDemoMode && hasData && !loading) {
-      // Poll every 5 seconds to check if real API key was added
-      const pollInterval = setInterval(() => {
-        const currentSignature = createDataSignature(day)
-        setLoading(true)
-        
-        analyzeWorkout(day as DayEntry)
-          .then((result) => {
-            setAnalysis(result)
-            setLastSignature(currentSignature)
-          })
-          .catch((err) => {
-            console.error("[v0] Coach panel demo retry:", err)
-          })
-          .finally(() => setLoading(false))
-      }, 5000)
-      
-      return () => clearInterval(pollInterval)
-    }
-  }, [analysis?.strengthTrend, day, loading])
+    return () => clearInterval(pollInterval)
+  }, [analysis?.strengthTrend, meaningfulData, loading, day])
 
-  // STATE MACHINE: Show panel if meaningful data exists OR is loading
-  const hasData = hasMeaningfulData(day)
-  if (!hasData && !loading) return null
+  if (!meaningfulData) {
+    return null
+  }
 
   return (
     <Card
@@ -146,11 +150,7 @@ export function AiCoachPanel({ weekIndex, dayIndex }: AiCoachPanelProps) {
             Strength Trend
           </div>
           <div className="text-sm leading-relaxed" style={{ color: theme.text + "DD" }}>
-            {loading
-              ? "Analyzing..."
-              : analysis
-              ? analysis.strengthTrend
-              : "—"}
+            {loading ? "Analyzing..." : analysis?.strengthTrend || "—"}
           </div>
         </div>
 
@@ -158,8 +158,8 @@ export function AiCoachPanel({ weekIndex, dayIndex }: AiCoachPanelProps) {
         <div
           className="p-3 rounded-lg border"
           style={{
-            backgroundColor: (analysis?.formAlert === "No alerts") ? theme.background + "40" : theme.primary + "15",
-            borderColor: (analysis?.formAlert === "No alerts") ? theme.border + "20" : theme.primary + "40",
+            backgroundColor: analysis?.formAlert === "No alerts" ? theme.background + "40" : theme.primary + "15",
+            borderColor: analysis?.formAlert === "No alerts" ? theme.border + "20" : theme.primary + "40",
           }}
         >
           <div className="text-xs font-mono uppercase tracking-widest mb-1" style={{ color: theme.accent }}>
@@ -168,15 +168,11 @@ export function AiCoachPanel({ weekIndex, dayIndex }: AiCoachPanelProps) {
           <div
             className="text-sm leading-relaxed"
             style={{
-              color: (analysis?.formAlert === "No alerts") ? theme.text + "99" : theme.primary,
-              fontWeight: (analysis?.formAlert === "No alerts") ? 400 : 600,
+              color: analysis?.formAlert === "No alerts" ? theme.text + "99" : theme.primary,
+              fontWeight: analysis?.formAlert === "No alerts" ? 400 : 600,
             }}
           >
-            {loading
-              ? "Analyzing..."
-              : analysis
-              ? analysis.formAlert
-              : "—"}
+            {loading ? "Analyzing..." : analysis?.formAlert || "—"}
           </div>
         </div>
 
@@ -191,9 +187,9 @@ export function AiCoachPanel({ weekIndex, dayIndex }: AiCoachPanelProps) {
               <li>Analyzing...</li>
               <li>Analyzing...</li>
             </ul>
-          ) : analysis ? (
+          ) : analysis?.recommendations && analysis.recommendations.length > 0 ? (
             <ul className="list-disc pl-4 space-y-1">
-              {analysis.recommendations?.map((rec, i) => (
+              {analysis.recommendations.map((rec, i) => (
                 <li key={i}>{rec}</li>
               ))}
             </ul>
@@ -202,8 +198,8 @@ export function AiCoachPanel({ weekIndex, dayIndex }: AiCoachPanelProps) {
           )}
         </div>
 
-        {/* Demo Mode Message - PATCH D: Only show after analysis completes */}
-        {!loading && analysis && analysis?.strengthTrend?.includes("DEMO MODE") && (
+        {/* Demo Mode Message */}
+        {!loading && analysis?.strengthTrend?.includes("DEMO MODE") && (
           <div
             className="p-3 rounded-lg border"
             style={{
