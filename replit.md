@@ -10,6 +10,25 @@ The application is designed for serious fitness enthusiasts who want granular co
 
 Preferred communication style: Simple, everyday language.
 
+## Recent Changes
+
+**November 23, 2025 - AI Coach Critical Bug Fixes**
+- **FIX 1:** Panel visibility now checks for meaningful data (sets/reps/load > 0) before displaying
+- **FIX 2:** Re-analysis triggers automatically when exercise data changes (sets, reps, load, RPE modified)
+- **FIX 3:** Demo-to-real mode transition - auto-polling every 5 seconds detects API key addition
+- Improved error handling: failed API calls don't block retries
+- Added comprehensive setup instructions in README.md for ANTHROPIC_API_KEY
+- Panel now disappears when exercise data is cleared (no stale analysis)
+- Data signature system prevents redundant API calls while allowing dynamic updates
+
+**November 23, 2025 - Vercel to Replit Migration**
+- Migrated project from Vercel to Replit environment
+- Updated package.json scripts to bind Next.js dev and production servers to port 5000 and host 0.0.0.0
+- Configured workflow to run Next.js dev server with proper port and host settings
+- Set up autoscale deployment configuration with pnpm build and start commands
+- Installed all dependencies (320 packages) using pnpm package manager
+- Application now accessible via Replit's webview interface
+
 ## System Architecture
 
 ### Frontend Architecture
