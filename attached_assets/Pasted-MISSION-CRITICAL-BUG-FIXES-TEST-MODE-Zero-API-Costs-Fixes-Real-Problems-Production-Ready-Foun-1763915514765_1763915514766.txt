@@ -1,0 +1,785 @@
+MISSION-CRITICAL BUG FIXES — TEST MODE
+(Zero API Costs • Fixes Real Problems • Production-Ready Foundation)
+
+PRIORITY: Fix the app's fundamental architectural problems FIRST.
+AI Coach improvements are SECONDARY.
+
+YOUR CURRENT APP STATUS:
+❌ No data persistence (everything lost on refresh)
+❌ No user isolation (everyone shares same data)
+❌ No error handling (app crashes break everything)
+❌ No loading states (users see nothing during operations)
+❌ No form validation (bad data crashes the app)
+
+THESE MUST BE FIXED BEFORE ANYTHING ELSE.
+
+═══════════════════════════════════════════════════════
+PHASE 1: DATA PERSISTENCE (HIGHEST PRIORITY)
+═══════════════════════════════════════════════════════
+
+PROBLEM: User enters workout data → refreshes page → ALL DATA GONE
+
+SOLUTION: Implement localStorage-based persistence (zero cost, works immediately)
+
+A. CREATE NEW FILE: lib/storage.ts
+
+/**
+ * Local Storage Manager
+ * Provides type-safe, persistent storage for workout data
+ * Zero external dependencies, works offline
+ */
+
+export interface Exercise {
+  id: string
+  name: string
+  sets: number
+  reps: number
+  load: number
+  unit: 'lbs' | 'kg'
+  rpe: number
+  notes?: string
+}
+
+export interface Workout {
+  id: string
+  date: string
+  weekNumber: number
+  dayNumber: number
+  exercises: Exercise[]
+  notes?: string
+  completed: boolean
+  aiAnalysis?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface UserProfile {
+  id: string
+  name: string
+  startDate: string
+  currentWeek: number
+  workouts: Workout[]
+}
+
+const STORAGE_KEYS = {
+  PROFILE: 'rtf_user_profile',
+  CURRENT_WORKOUT: 'rtf_current_workout',
+  WORKOUTS: 'rtf_workouts',
+  SETTINGS: 'rtf_settings'
+} as const
+
+// ============================================
+// CORE STORAGE FUNCTIONS
+// ============================================
+
+export function saveWorkout(workout: Workout): void {
+  try {
+    const workouts = getAllWorkouts()
+    const existingIndex = workouts.findIndex(w => w.id === workout.id)
+    
+    if (existingIndex >= 0) {
+      workouts[existingIndex] = {
+        ...workout,
+        updatedAt: new Date().toISOString()
+      }
+    } else {
+      workouts.push({
+        ...workout,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      })
+    }
+    
+    localStorage.setItem(STORAGE_KEYS.WORKOUTS, JSON.stringify(workouts))
+  } catch (error) {
+    console.error('Failed to save workout:', error)
+    throw new Error('Storage quota exceeded or unavailable')
+  }
+}
+
+export function getAllWorkouts(): Workout[] {
+  try {
+    const data = localStorage.getItem(STORAGE_KEYS.WORKOUTS)
+    return data ? JSON.parse(data) : []
+  } catch (error) {
+    console.error('Failed to load workouts:', error)
+    return []
+  }
+}
+
+export function getWorkoutById(id: string): Workout | null {
+  const workouts = getAllWorkouts()
+  return workouts.find(w => w.id === id) || null
+}
+
+export function deleteWorkout(id: string): void {
+  try {
+    const workouts = getAllWorkouts()
+    const filtered = workouts.filter(w => w.id !== id)
+    localStorage.setItem(STORAGE_KEYS.WORKOUTS, JSON.stringify(filtered))
+  } catch (error) {
+    console.error('Failed to delete workout:', error)
+    throw new Error('Failed to delete workout')
+  }
+}
+
+export function getWorkoutsByWeek(weekNumber: number): Workout[] {
+  const workouts = getAllWorkouts()
+  return workouts
+    .filter(w => w.weekNumber === weekNumber)
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+}
+
+export function getCurrentWorkout(): Workout | null {
+  try {
+    const data = localStorage.getItem(STORAGE_KEYS.CURRENT_WORKOUT)
+    return data ? JSON.parse(data) : null
+  } catch (error) {
+    console.error('Failed to load current workout:', error)
+    return null
+  }
+}
+
+export function saveCurrentWorkout(workout: Workout): void {
+  try {
+    localStorage.setItem(STORAGE_KEYS.CURRENT_WORKOUT, JSON.stringify(workout))
+  } catch (error) {
+    console.error('Failed to save current workout:', error)
+    throw new Error('Failed to save current workout')
+  }
+}
+
+export function clearCurrentWorkout(): void {
+  localStorage.removeItem(STORAGE_KEYS.CURRENT_WORKOUT)
+}
+
+// ============================================
+// USER PROFILE FUNCTIONS
+// ============================================
+
+export function getUserProfile(): UserProfile | null {
+  try {
+    const data = localStorage.getItem(STORAGE_KEYS.PROFILE)
+    return data ? JSON.parse(data) : null
+  } catch (error) {
+    console.error('Failed to load profile:', error)
+    return null
+  }
+}
+
+export function saveUserProfile(profile: UserProfile): void {
+  try {
+    localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(profile))
+  } catch (error) {
+    console.error('Failed to save profile:', error)
+    throw new Error('Failed to save profile')
+  }
+}
+
+export function initializeUserProfile(name: string): UserProfile {
+  const profile: UserProfile = {
+    id: generateId(),
+    name,
+    startDate: new Date().toISOString(),
+    currentWeek: 1,
+    workouts: []
+  }
+  saveUserProfile(profile)
+  return profile
+}
+
+// ============================================
+// UTILITY FUNCTIONS
+// ============================================
+
+export function generateId(): string {
+  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+}
+
+export function createEmptyWorkout(weekNumber: number, dayNumber: number): Workout {
+  return {
+    id: generateId(),
+    date: new Date().toISOString().split('T')[0],
+    weekNumber,
+    dayNumber,
+    exercises: [],
+    completed: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  }
+}
+
+export function createEmptyExercise(): Exercise {
+  return {
+    id: generateId(),
+    name: '',
+    sets: 3,
+    reps: 10,
+    load: 0,
+    unit: 'lbs',
+    rpe: 7
+  }
+}
+
+export function exportAllData(): string {
+  return JSON.stringify({
+    profile: getUserProfile(),
+    workouts: getAllWorkouts(),
+    exportDate: new Date().toISOString()
+  }, null, 2)
+}
+
+export function importData(jsonString: string): void {
+  try {
+    const data = JSON.parse(jsonString)
+    
+    if (data.profile) {
+      saveUserProfile(data.profile)
+    }
+    
+    if (data.workouts) {
+      localStorage.setItem(STORAGE_KEYS.WORKOUTS, JSON.stringify(data.workouts))
+    }
+  } catch (error) {
+    throw new Error('Invalid import data')
+  }
+}
+
+export function clearAllData(): void {
+  if (confirm('This will delete ALL your workout data. Are you sure?')) {
+    Object.values(STORAGE_KEYS).forEach(key => {
+      localStorage.removeItem(key)
+    })
+  }
+}
+
+═══════════════════════════════════════════════════════
+PHASE 2: ERROR HANDLING INFRASTRUCTURE
+═══════════════════════════════════════════════════════
+
+PROBLEM: Any error crashes the entire app with white screen
+
+SOLUTION: Global error boundaries and error handling utilities
+
+B. CREATE NEW FILE: components/error-boundary.tsx
+
+'use client'
+
+import { Component, ReactNode } from 'react'
+
+interface Props {
+  children: ReactNode
+  fallback?: ReactNode
+}
+
+interface State {
+  hasError: boolean
+  error: Error | null
+}
+
+export class ErrorBoundary extends Component<Props, State> {
+  constructor(props: Props) {
+    super(props)
+    this.state = { hasError: false, error: null }
+  }
+
+  static getDerivedStateFromError(error: Error): State {
+    return { hasError: true, error }
+  }
+
+  componentDidCatch(error: Error, errorInfo: any) {
+    console.error('Error caught by boundary:', error, errorInfo)
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback || (
+        <div className="min-h-screen flex items-center justify-center bg-red-50">
+          <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="text-4xl">⚠️</div>
+              <div>
+                <h2 className="text-xl font-bold text-red-900">
+                  Something went wrong
+                </h2>
+                <p className="text-sm text-red-700">
+                  The app encountered an unexpected error
+                </p>
+              </div>
+            </div>
+            
+            <div className="bg-red-100 border border-red-300 rounded p-3 mb-4">
+              <p className="text-xs font-mono text-red-800">
+                {this.state.error?.message}
+              </p>
+            </div>
+            
+            <div className="flex gap-2">
+              <button
+                onClick={() => window.location.reload()}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded font-semibold hover:bg-red-700"
+              >
+                Reload App
+              </button>
+              <button
+                onClick={() => this.setState({ hasError: false, error: null })}
+                className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded font-semibold hover:bg-gray-300"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+    return this.props.children
+  }
+}
+
+C. CREATE NEW FILE: lib/error-handler.ts
+
+export class AppError extends Error {
+  constructor(
+    message: string,
+    public code: string,
+    public userMessage: string
+  ) {
+    super(message)
+    this.name = 'AppError'
+  }
+}
+
+export function handleError(error: unknown): {
+  message: string
+  code: string
+  shouldNotify: boolean
+} {
+  if (error instanceof AppError) {
+    return {
+      message: error.userMessage,
+      code: error.code,
+      shouldNotify: true
+    }
+  }
+  
+  if (error instanceof Error) {
+    // Storage errors
+    if (error.message.includes('quota') || error.message.includes('Storage')) {
+      return {
+        message: 'Storage is full. Please delete old workouts or export your data.',
+        code: 'STORAGE_FULL',
+        shouldNotify: true
+      }
+    }
+    
+    // Network errors
+    if (error.message.includes('fetch') || error.message.includes('network')) {
+      return {
+        message: 'Network error. Check your connection and try again.',
+        code: 'NETWORK_ERROR',
+        shouldNotify: true
+      }
+    }
+    
+    return {
+      message: error.message,
+      code: 'UNKNOWN_ERROR',
+      shouldNotify: true
+    }
+  }
+  
+  return {
+    message: 'An unexpected error occurred',
+    code: 'UNKNOWN',
+    shouldNotify: true
+  }
+}
+
+export function logError(error: unknown, context?: string): void {
+  console.error(`[ERROR${context ? ` - ${context}` : ''}]:`, error)
+}
+
+═══════════════════════════════════════════════════════
+PHASE 3: FORM VALIDATION
+═══════════════════════════════════════════════════════
+
+PROBLEM: Users can enter invalid data (negative reps, RPE of 50, etc.)
+
+SOLUTION: Validation utilities with clear error messages
+
+D. CREATE NEW FILE: lib/validation.ts
+
+export interface ValidationResult {
+  isValid: boolean
+  errors: string[]
+}
+
+export function validateExercise(exercise: {
+  name: string
+  sets: number
+  reps: number
+  load: number
+  rpe: number
+}): ValidationResult {
+  const errors: string[] = []
+  
+  // Name validation
+  if (!exercise.name || exercise.name.trim().length === 0) {
+    errors.push('Exercise name is required')
+  }
+  
+  if (exercise.name.length > 100) {
+    errors.push('Exercise name must be less than 100 characters')
+  }
+  
+  // Sets validation
+  if (!Number.isInteger(exercise.sets) || exercise.sets < 1) {
+    errors.push('Sets must be at least 1')
+  }
+  
+  if (exercise.sets > 20) {
+    errors.push('Sets cannot exceed 20')
+  }
+  
+  // Reps validation
+  if (!Number.isInteger(exercise.reps) || exercise.reps < 1) {
+    errors.push('Reps must be at least 1')
+  }
+  
+  if (exercise.reps > 100) {
+    errors.push('Reps cannot exceed 100')
+  }
+  
+  // Load validation
+  if (exercise.load < 0) {
+    errors.push('Load cannot be negative')
+  }
+  
+  if (exercise.load > 10000) {
+    errors.push('Load seems unrealistic (max 10,000 lbs)')
+  }
+  
+  // RPE validation
+  if (exercise.rpe < 1 || exercise.rpe > 10) {
+    errors.push('RPE must be between 1 and 10')
+  }
+  
+  return {
+    isValid: errors.length === 0,
+    errors
+  }
+}
+
+export function validateWorkout(workout: {
+  weekNumber: number
+  dayNumber: number
+  exercises: any[]
+}): ValidationResult {
+  const errors: string[] = []
+  
+  if (workout.weekNumber < 1 || workout.weekNumber > 12) {
+    errors.push('Week number must be between 1 and 12')
+  }
+  
+  if (workout.dayNumber < 1 || workout.dayNumber > 7) {
+    errors.push('Day number must be between 1 and 7')
+  }
+  
+  if (workout.exercises.length === 0) {
+    errors.push('Workout must have at least one exercise')
+  }
+  
+  if (workout.exercises.length > 20) {
+    errors.push('Workout cannot have more than 20 exercises')
+  }
+  
+  // Validate each exercise
+  workout.exercises.forEach((ex, index) => {
+    const result = validateExercise(ex)
+    if (!result.isValid) {
+      errors.push(`Exercise ${index + 1}: ${result.errors.join(', ')}`)
+    }
+  })
+  
+  return {
+    isValid: errors.length === 0,
+    errors
+  }
+}
+
+export function sanitizeInput(input: string): string {
+  return input.trim().slice(0, 200)
+}
+
+export function sanitizeNumber(value: any, min: number, max: number, defaultValue: number): number {
+  const num = Number(value)
+  if (isNaN(num)) return defaultValue
+  return Math.min(Math.max(num, min), max)
+}
+
+═══════════════════════════════════════════════════════
+PHASE 4: LOADING STATES & UI FEEDBACK
+═══════════════════════════════════════════════════════
+
+PROBLEM: No visual feedback during operations
+
+SOLUTION: Reusable loading components and toast notifications
+
+E. CREATE NEW FILE: components/loading-spinner.tsx
+
+export function LoadingSpinner({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
+  const sizeClasses = {
+    sm: 'h-4 w-4',
+    md: 'h-8 w-8',
+    lg: 'h-12 w-12'
+  }
+  
+  return (
+    <div className="flex items-center justify-center">
+      <svg 
+        className={`animate-spin ${sizeClasses[size]} text-blue-600`} 
+        viewBox="0 0 24 24"
+      >
+        <circle 
+          className="opacity-25" 
+          cx="12" 
+          cy="12" 
+          r="10" 
+          stroke="currentColor" 
+          strokeWidth="4" 
+          fill="none" 
+        />
+        <path 
+          className="opacity-75" 
+          fill="currentColor" 
+          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" 
+        />
+      </svg>
+    </div>
+  )
+}
+
+export function LoadingOverlay({ message }: { message?: string }) {
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 shadow-2xl">
+        <LoadingSpinner size="lg" />
+        {message && (
+          <p className="mt-4 text-center text-gray-700 font-semibold">
+            {message}
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+F. CREATE NEW FILE: components/toast.tsx
+
+'use client'
+
+import { createContext, useContext, useState, ReactNode } from 'react'
+
+type ToastType = 'success' | 'error' | 'warning' | 'info'
+
+interface Toast {
+  id: string
+  type: ToastType
+  message: string
+}
+
+interface ToastContextType {
+  showToast: (type: ToastType, message: string) => void
+}
+
+const ToastContext = createContext<ToastContextType | undefined>(undefined)
+
+export function ToastProvider({ children }: { children: ReactNode }) {
+  const [toasts, setToasts] = useState<Toast[]>([])
+  
+  const showToast = (type: ToastType, message: string) => {
+    const id = `${Date.now()}-${Math.random()}`
+    setToasts(prev => [...prev, { id, type, message }])
+    
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id))
+    }, 4000)
+  }
+  
+  return (
+    <ToastContext.Provider value={{ showToast }}>
+      {children}
+      <div className="fixed bottom-4 right-4 z-50 space-y-2">
+        {toasts.map(toast => (
+          <ToastMessage key={toast.id} toast={toast} />
+        ))}
+      </div>
+    </ToastContext.Provider>
+  )
+}
+
+function ToastMessage({ toast }: { toast: Toast }) {
+  const styles = {
+    success: 'bg-green-500 text-white',
+    error: 'bg-red-500 text-white',
+    warning: 'bg-yellow-500 text-black',
+    info: 'bg-blue-500 text-white'
+  }
+  
+  const icons = {
+    success: '✓',
+    error: '✕',
+    warning: '⚠',
+    info: 'ℹ'
+  }
+  
+  return (
+    <div className={`${styles[toast.type]} px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 min-w-[300px] animate-slide-in`}>
+      <span className="text-xl">{icons[toast.type]}</span>
+      <p className="font-semibold">{toast.message}</p>
+    </div>
+  )
+}
+
+export function useToast() {
+  const context = useContext(ToastContext)
+  if (!context) {
+    throw new Error('useToast must be used within ToastProvider')
+  }
+  return context
+}
+
+═══════════════════════════════════════════════════════
+PHASE 5: INTEGRATE INTO EXISTING APP
+═══════════════════════════════════════════════════════
+
+G. UPDATE: app/layout.tsx
+
+// ADD THESE IMPORTS
+import { ErrorBoundary } from '@/components/error-boundary'
+import { ToastProvider } from '@/components/toast'
+
+// WRAP YOUR EXISTING CHILDREN:
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        <ErrorBoundary>
+          <ToastProvider>
+            {children}
+          </ToastProvider>
+        </ErrorBoundary>
+      </body>
+    </html>
+  )
+}
+
+H. UPDATE YOUR WORKOUT FORM COMPONENT
+
+// ADD THESE IMPORTS
+import { saveWorkout, saveCurrentWorkout, createEmptyExercise } from '@/lib/storage'
+import { validateExercise, validateWorkout } from '@/lib/validation'
+import { useToast } from '@/components/toast'
+import { LoadingSpinner } from '@/components/loading-spinner'
+import { handleError, logError } from '@/lib/error-handler'
+
+// INSIDE YOUR COMPONENT:
+const { showToast } = useToast()
+const [saving, setSaving] = useState(false)
+
+// REPLACE YOUR SAVE FUNCTION WITH:
+const handleSaveWorkout = async () => {
+  setSaving(true)
+  
+  try {
+    // Validate first
+    const validation = validateWorkout(currentWorkout)
+    if (!validation.isValid) {
+      showToast('error', validation.errors[0])
+      return
+    }
+    
+    // Save to storage
+    saveWorkout(currentWorkout)
+    saveCurrentWorkout(currentWorkout)
+    
+    showToast('success', 'Workout saved successfully!')
+    
+  } catch (error) {
+    logError(error, 'handleSaveWorkout')
+    const errorInfo = handleError(error)
+    showToast('error', errorInfo.message)
+  } finally {
+    setSaving(false)
+  }
+}
+
+// ADD THIS FOR EXERCISE VALIDATION
+const handleExerciseChange = (index: number, field: string, value: any) => {
+  const updated = [...exercises]
+  updated[index] = { ...updated[index], [field]: value }
+  
+  // Validate immediately
+  const validation = validateExercise(updated[index])
+  if (!validation.isValid) {
+    showToast('warning', validation.errors[0])
+  }
+  
+  setExercises(updated)
+  saveCurrentWorkout({ ...currentWorkout, exercises: updated })
+}
+
+// IN YOUR BUTTON:
+<button 
+  onClick={handleSaveWorkout}
+  disabled={saving}
+  className="..."
+>
+  {saving ? <LoadingSpinner size="sm" /> : 'Save Workout'}
+</button>
+
+═══════════════════════════════════════════════════════
+VALIDATION CHECKLIST
+═══════════════════════════════════════════════════════
+
+Test these critical scenarios:
+
+✅ Enter workout data → Refresh page → Data persists
+✅ Enter invalid RPE (15) → Get error toast
+✅ Enter negative reps → Get error toast
+✅ Save workout → See success toast
+✅ Cause an error → Error boundary catches it
+✅ Fill out form → Navigate away → Come back → Form auto-restored
+✅ Complete workout → Mark as complete → Persists across sessions
+✅ Create multiple workouts → All appear in history
+✅ Delete workout → Confirm it's removed from storage
+✅ Export data → Verify JSON downloads
+✅ Import data → Verify data restores
+
+═══════════════════════════════════════════════════════
+WHAT THIS FIXES
+═══════════════════════════════════════════════════════
+
+BEFORE:
+❌ Data lost on refresh
+❌ No error handling - white screen crashes
+❌ No validation - users enter garbage data
+❌ No feedback - users don't know what's happening
+❌ No persistence - can't track 12-week progress
+
+AFTER:
+✅ All data persists locally
+✅ Errors handled gracefully with clear messages
+✅ Invalid inputs prevented with helpful warnings
+✅ Clear visual feedback for all operations
+✅ Complete workout history saved
+✅ Export/import for backup
+✅ Auto-save current workout
+✅ Can track full 12-week transformation
+
+═══════════════════════════════════════════════════════
+COST: $0.00
+TIME TO IMPLEMENT: 2-3 hours
+IMPACT: App becomes actually usable
+═══════════════════════════════════════════════════════
