@@ -10,6 +10,7 @@ import { HabitRecoveryTracker } from "./habit-recovery-tracker"
 import { cn } from "@/lib/utils"
 import { usePlanner } from "@/hooks/use-planner"
 import { getThemeColors } from "@/lib/themes"
+import { AiCoachPanel } from "./ai-coach-panel"
 
 interface DailyLogProps {
   weekId: string
@@ -150,6 +151,9 @@ export const DailyLog = memo(function DailyLog({ weekId, dayId }: DailyLogProps)
           </div>
         </CardContent>
       </Card>
+
+      <AiCoachPanel weekIndex={weekIndex} dayIndex={dayIndex} />
+
       <HabitRecoveryTracker weekId={weekId} dayId={dayId} />
     </>
   )
