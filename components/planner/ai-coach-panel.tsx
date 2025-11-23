@@ -12,25 +12,51 @@ interface AiCoachPanelProps {
   dayIndex: number
 }
 
+// Helper: Check if exercises have meaningful data
+function hasMeaningfulData(day: DayEntry | undefined): boolean {
+  if (!day?.training || day.training.length === 0) return false
+  
+  // At least one exercise must have sets, reps, or load filled in
+  return day.training.some((ex) => {
+    const hasSets = ex.sets && ex.sets > 0
+    const hasReps = ex.reps && ex.reps > 0
+    const hasLoad = ex.loadKg && ex.loadKg > 0
+    return hasSets || hasReps || hasLoad
+  })
+}
+
+// Helper: Create data signature for re-analysis detection
+function createDataSignature(day: DayEntry | undefined): string {
+  if (!day?.training) return ""
+  
+  return day.training
+    .map((ex) => `${ex.name}|${ex.sets}|${ex.reps}|${ex.loadKg}|${ex.rpe}`)
+    .join("||")
+}
+
 export function AiCoachPanel({ weekIndex, dayIndex }: AiCoachPanelProps) {
   const { state } = usePlanner()
   const theme = getThemeColors(state?.theme || "dark-knight")
   const [analysis, setAnalysis] = useState<CoachAnalysis | null>(null)
   const [loading, setLoading] = useState(false)
-  const [analyzed, setAnalyzed] = useState(false)
+  const [lastSignature, setLastSignature] = useState<string>("")
 
   const day = state?.weeks?.[weekIndex]?.days?.[dayIndex]
 
-  // Trigger analysis when day has exercises
+  // FIX 1 & 2: Trigger analysis when exercises have meaningful data AND data changes
   useEffect(() => {
-    const hasExercises = day?.training && day.training.length > 0 && !analyzed
+    const currentSignature = createDataSignature(day)
+    const hasData = hasMeaningfulData(day)
+    const dataChanged = currentSignature !== lastSignature && currentSignature !== ""
 
-    if (hasExercises) {
+    if (hasData && dataChanged) {
       setLoading(true)
+      
       analyzeWorkout(day as DayEntry)
         .then((result) => {
           setAnalysis(result)
-          setAnalyzed(true)
+          // ARCHITECT FIX: Only update signature AFTER successful analysis
+          setLastSignature(currentSignature)
         })
         .catch((err) => {
           console.error("[v0] Coach panel error:", err)
@@ -39,12 +65,44 @@ export function AiCoachPanel({ weekIndex, dayIndex }: AiCoachPanelProps) {
             formAlert: "Unable to generate",
             recommendations: [],
           })
+          // ARCHITECT FIX: Don't update signature on error - allow retries
         })
         .finally(() => setLoading(false))
+    } else if (!hasData) {
+      // FIX 1: Clear analysis if no meaningful data exists
+      setAnalysis(null)
+      setLastSignature("")
     }
-  }, [day, analyzed]) // Updated dependency array
+  }, [day, lastSignature])
 
-  if (!analysis) return null
+  // ARCHITECT FIX: Auto-retry when in demo mode to detect API key addition
+  useEffect(() => {
+    const isDemoMode = analysis?.strengthTrend?.includes("DEMO MODE")
+    const hasData = hasMeaningfulData(day)
+    
+    if (isDemoMode && hasData && !loading) {
+      // Poll every 5 seconds to check if real API key was added
+      const pollInterval = setInterval(() => {
+        const currentSignature = createDataSignature(day)
+        setLoading(true)
+        
+        analyzeWorkout(day as DayEntry)
+          .then((result) => {
+            setAnalysis(result)
+            setLastSignature(currentSignature)
+          })
+          .catch((err) => {
+            console.error("[v0] Coach panel demo retry:", err)
+          })
+          .finally(() => setLoading(false))
+      }, 5000)
+      
+      return () => clearInterval(pollInterval)
+    }
+  }, [analysis?.strengthTrend, day, loading])
+
+  // FIX 1: Only show panel if exercises have meaningful data AND analysis exists
+  if (!hasMeaningfulData(day) || !analysis) return null
 
   return (
     <Card

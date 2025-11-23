@@ -14,28 +14,19 @@ export async function analyzeWorkout(dayData: DayEntry): Promise<CoachAnalysis> 
   try {
     const apiKey = process.env.ANTHROPIC_API_KEY
 
+    // FIX 3: Demo mode with clear instructions for enabling real AI
     if (!apiKey || apiKey === "TEST") {
       // Simulate network delay to ensure loading states are visible
       await new Promise((resolve) => setTimeout(resolve, 1000))
 
       return {
-        strengthTrend: "Demo mode: stable workload and consistent RPE.",
-        formAlert: null,
+        strengthTrend: "🤖 DEMO MODE - Using sample analysis (real AI not connected)",
+        formAlert: "To enable real AI coaching, add your Anthropic API key in Secrets",
         recommendations: [
-          "Increase top set by +2.5kg next week.",
-          "Add 1 backoff set for volume.",
-          "Maintain current warmup structure.",
+          "Open 'Secrets' in Replit workspace",
+          "Add secret: ANTHROPIC_API_KEY = your_api_key_here",
+          "Get API key from console.anthropic.com",
         ],
-      }
-    }
-
-    // Validate API key
-    if (!apiKey) {
-      return {
-        strengthTrend: "API not configured",
-        formAlert: "Unable to connect to coaching system",
-        recommendations: ["Please configure ANTHROPIC_API_KEY in environment variables"],
-        error: "Missing API key",
       }
     }
 
