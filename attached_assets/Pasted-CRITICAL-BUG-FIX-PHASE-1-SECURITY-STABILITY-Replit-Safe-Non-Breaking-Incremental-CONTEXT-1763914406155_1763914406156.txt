@@ -1,0 +1,380 @@
+CRITICAL BUG FIX — PHASE 1: SECURITY & STABILITY
+(Replit-Safe • Non-Breaking • Incremental)
+
+CONTEXT:
+You are working on a fitness app with AI coaching. The app currently works but has critical security vulnerabilities. We need to fix these WITHOUT breaking existing functionality.
+
+CONSTRAINTS:
+- DO NOT delete or rename existing files
+- DO NOT change existing component APIs
+- DO NOT modify working UI components
+- ONLY add new files or enhance existing ones
+- Test each change before moving to the next
+- Keep all existing routes functional
+
+EXECUTION ORDER (MUST FOLLOW SEQUENTIALLY):
+
+═══════════════════════════════════════════════════════
+STEP 1: SECURE THE API KEY (HIGHEST PRIORITY)
+═══════════════════════════════════════════════════════
+
+GOAL: Move Anthropic API calls from client-side to server-side
+
+A. CREATE NEW FILE: app/api/ai-coach/route.ts
+
+import { NextResponse } from 'next/server'
+import Anthropic from '@anthropic-ai/sdk'
+
+export const runtime = 'edge'
+export const maxDuration = 30
+
+export async function POST(request: Request) {
+  try {
+    // Get API key from environment (Replit Secrets)
+    const apiKey = process.env.ANTHROPIC_API_KEY
+    
+    if (!apiKey) {
+      return NextResponse.json(
+        { 
+          error: 'AI_UNAVAILABLE',
+          message: 'Running in demo mode. Add ANTHROPIC_API_KEY to enable real analysis.',
+          demoAnalysis: generateDemoAnalysis()
+        },
+        { status: 200 }
+      )
+    }
+
+    // Parse request body
+    const body = await request.json()
+    const { exerciseData, userId } = body
+
+    // Basic validation
+    if (!exerciseData || !Array.isArray(exerciseData)) {
+      return NextResponse.json(
+        { error: 'INVALID_DATA', message: 'Exercise data must be an array' },
+        { status: 400 }
+      )
+    }
+
+    // Initialize Anthropic client
+    const anthropic = new Anthropic({
+      apiKey: apiKey,
+    })
+
+    // Create the prompt
+    const prompt = buildWorkoutAnalysisPrompt(exerciseData)
+
+    // Call Anthropic API
+    const message = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1024,
+      messages: [
+        {
+          role: 'user',
+          content: prompt
+        }
+      ]
+    })
+
+    // Extract text from response
+    const analysisText = message.content
+      .filter(block => block.type === 'text')
+      .map(block => block.text)
+      .join('\n')
+
+    return NextResponse.json({
+      success: true,
+      analysis: analysisText,
+      tokensUsed: message.usage.input_tokens + message.usage.output_tokens,
+      timestamp: new Date().toISOString()
+    })
+
+  } catch (error: any) {
+    console.error('AI Coach API Error:', error)
+    
+    return NextResponse.json(
+      { 
+        error: 'API_ERROR',
+        message: 'Failed to generate analysis. Please try again.',
+        demoAnalysis: generateDemoAnalysis()
+      },
+      { status: 500 }
+    )
+  }
+}
+
+function buildWorkoutAnalysisPrompt(exerciseData: any[]): string {
+  return `You are an expert fitness coach analyzing a workout session. Provide:
+
+1. Strength Trend Observations (2-3 sentences)
+2. Form Alerts (if any red flags based on RPE, load, or volume)
+3. Three Actionable Recommendations
+
+Workout Data:
+${exerciseData.map((ex, i) => 
+  `${i + 1}. ${ex.name}: ${ex.sets} sets × ${ex.reps} reps @ ${ex.load}${ex.unit || 'lbs'} (RPE: ${ex.rpe}/10)`
+).join('\n')}
+
+Format your response clearly with headers. Be specific and practical.`
+}
+
+function generateDemoAnalysis(): string {
+  return `**DEMO MODE ANALYSIS**
+
+**Strength Trends:**
+Your compound movements show solid progression. The RPE ratings indicate you're training with appropriate intensity for muscle growth.
+
+**Form Alerts:**
+⚠️ RPE of 9+ on multiple sets may indicate compromised form. Consider reducing load by 5-10% on your next session.
+
+**Recommendations:**
+1. Add 2.5-5lbs to your main lifts next week if RPE stays at 7-8
+2. Incorporate a deload week after 3-4 weeks of progressive overload
+3. Track bar speed on compound lifts to detect fatigue earlier
+
+*Enable real AI analysis by adding your Anthropic API key to Replit Secrets.*`
+}
+
+═══════════════════════════════════════════════════════
+STEP 2: ADD ERROR HANDLING WRAPPER
+═══════════════════════════════════════════════════════
+
+B. CREATE NEW FILE: lib/api-client.ts
+
+export async function callAICoach(exerciseData: any[], userId?: string) {
+  try {
+    const response = await fetch('/api/ai-coach', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ 
+        exerciseData,
+        userId 
+      }),
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Analysis failed')
+    }
+
+    return {
+      success: true,
+      analysis: data.analysis || data.demoAnalysis,
+      isDemo: !!data.demoAnalysis,
+      tokensUsed: data.tokensUsed,
+      error: null
+    }
+
+  } catch (error: any) {
+    console.error('AI Coach call failed:', error)
+    
+    return {
+      success: false,
+      analysis: null,
+      isDemo: false,
+      tokensUsed: 0,
+      error: error.message || 'Network error'
+    }
+  }
+}
+
+═══════════════════════════════════════════════════════
+STEP 3: UPDATE EXISTING AI COACH COMPONENT (CAREFULLY)
+═══════════════════════════════════════════════════════
+
+C. FIND YOUR CURRENT AI COACH COMPONENT (likely in components/)
+
+MODIFICATIONS TO MAKE:
+1. Import the new API client
+2. Replace direct Anthropic calls with callAICoach()
+3. Add loading, error, and demo mode states
+4. Keep all existing props and UI structure
+
+EXAMPLE MODIFICATION PATTERN:
+
+// ADD THESE IMPORTS AT TOP
+import { callAICoach } from '@/lib/api-client'
+import { useState } from 'react'
+
+// FIND THE FUNCTION THAT CALLS ANTHROPIC
+// REPLACE IT WITH:
+
+const [loading, setLoading] = useState(false)
+const [error, setError] = useState<string | null>(null)
+const [isDemo, setIsDemo] = useState(false)
+
+async function analyzeWorkout() {
+  setLoading(true)
+  setError(null)
+  
+  const result = await callAICoach(exerciseData)
+  
+  if (result.success) {
+    setAnalysis(result.analysis)
+    setIsDemo(result.isDemo)
+  } else {
+    setError(result.error)
+  }
+  
+  setLoading(false)
+}
+
+// ADD VISUAL FEEDBACK IN YOUR RENDER:
+{loading && <div className="animate-pulse">Analyzing workout...</div>}
+{error && <div className="text-red-600 p-2 rounded bg-red-50">{error}</div>}
+{isDemo && <div className="text-yellow-600 text-sm">⚠️ Demo mode active</div>}
+
+═══════════════════════════════════════════════════════
+STEP 4: ADD RATE LIMITING (SIMPLE VERSION)
+═══════════════════════════════════════════════════════
+
+D. CREATE NEW FILE: lib/rate-limit.ts
+
+const analysisCache = new Map<string, { timestamp: number; analysis: string }>()
+const COOLDOWN_MS = 10000 // 10 seconds between analyses
+
+export function canAnalyze(userId: string, exerciseHash: string): boolean {
+  const key = `${userId}:${exerciseHash}`
+  const cached = analysisCache.get(key)
+  
+  if (!cached) return true
+  
+  const timeSince = Date.now() - cached.timestamp
+  return timeSince > COOLDOWN_MS
+}
+
+export function cacheAnalysis(userId: string, exerciseHash: string, analysis: string) {
+  const key = `${userId}:${exerciseHash}`
+  analysisCache.set(key, { timestamp: Date.now(), analysis })
+  
+  // Clean old entries (older than 1 hour)
+  for (const [k, v] of analysisCache.entries()) {
+    if (Date.now() - v.timestamp > 3600000) {
+      analysisCache.delete(k)
+    }
+  }
+}
+
+export function getCachedAnalysis(userId: string, exerciseHash: string): string | null {
+  const key = `${userId}:${exerciseHash}`
+  return analysisCache.get(key)?.analysis || null
+}
+
+export function hashExerciseData(data: any[]): string {
+  return JSON.stringify(data.map(ex => ({
+    name: ex.name,
+    sets: ex.sets,
+    reps: ex.reps,
+    load: ex.load,
+    rpe: ex.rpe
+  })))
+}
+
+E. UPDATE app/api/ai-coach/route.ts TO USE RATE LIMITING:
+
+// ADD AT TOP
+import { canAnalyze, cacheAnalysis, getCachedAnalysis, hashExerciseData } from '@/lib/rate-limit'
+
+// ADD BEFORE ANTHROPIC CALL (inside POST function):
+const exerciseHash = hashExerciseData(exerciseData)
+const tempUserId = userId || 'anonymous'
+
+// Check cache first
+const cached = getCachedAnalysis(tempUserId, exerciseHash)
+if (cached) {
+  return NextResponse.json({
+    success: true,
+    analysis: cached,
+    tokensUsed: 0,
+    cached: true,
+    timestamp: new Date().toISOString()
+  })
+}
+
+// Check rate limit
+if (!canAnalyze(tempUserId, exerciseHash)) {
+  return NextResponse.json(
+    { 
+      error: 'RATE_LIMITED',
+      message: 'Please wait 10 seconds between analyses',
+      retryAfter: 10
+    },
+    { status: 429 }
+  )
+}
+
+// ... existing Anthropic call ...
+
+// AFTER SUCCESSFUL RESPONSE, ADD:
+cacheAnalysis(tempUserId, exerciseHash, analysisText)
+
+═══════════════════════════════════════════════════════
+STEP 5: VERIFY REPLIT SECRETS SETUP
+═══════════════════════════════════════════════════════
+
+F. CHECK REPLIT SECRETS PANE:
+
+1. Open Tools → Secrets in Replit
+2. Verify ANTHROPIC_API_KEY exists
+3. Value should start with: sk-ant-
+4. If missing, add it now
+
+G. TEST THE CHANGES:
+
+1. Restart your Replit app
+2. Trigger an AI analysis
+3. Check Replit console for errors
+4. Verify no API key appears in browser Network tab
+5. Test demo mode by temporarily removing API key
+
+═══════════════════════════════════════════════════════
+VALIDATION CHECKLIST
+═══════════════════════════════════════════════════════
+
+Before marking this complete, verify:
+
+✅ API key never appears in browser DevTools Network tab
+✅ App still works exactly as before (same UI, same features)
+✅ AI analysis still generates (either real or demo)
+✅ Error messages appear if API fails
+✅ Loading state shows while waiting for analysis
+✅ Demo mode indicator shows when API key missing
+✅ Same workout analyzed twice uses cache (check console)
+✅ Rapid clicks don't trigger multiple API calls
+✅ No TypeScript errors in terminal
+✅ No breaking changes to existing components
+
+═══════════════════════════════════════════════════════
+ROLLBACK PLAN (IF SOMETHING BREAKS)
+═══════════════════════════════════════════════════════
+
+If anything stops working:
+
+1. Keep: app/api/ai-coach/route.ts (doesn't affect old code)
+2. Keep: lib/api-client.ts (doesn't affect old code)
+3. Keep: lib/rate-limit.ts (doesn't affect old code)
+4. Revert: Any changes to existing components
+5. The new API route provides backward compatibility via demo mode
+
+═══════════════════════════════════════════════════════
+
+CRITICAL SUCCESS FACTORS:
+
+1. Test after EACH step before moving to next
+2. Don't modify existing component props/APIs
+3. Keep old code paths working
+4. Add new functionality alongside old, don't replace
+5. Use Replit's built-in Secrets (already configured)
+
+WHEN COMPLETE:
+- App is 80% more secure
+- API costs reduced by 90% (caching)
+- No breaking changes
+- Graceful fallback to demo mode
+- Ready for Phase 2 (database integration)
+
+DO NOT PROCEED TO DATABASE/AUTH CHANGES YET.
+Focus only on securing the existing AI functionality.

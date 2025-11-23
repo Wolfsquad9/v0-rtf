@@ -4,8 +4,14 @@ import { useState, useEffect, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { usePlanner } from "@/hooks/use-planner"
 import { getThemeColors } from "@/lib/themes"
-import { analyzeWorkout, type CoachAnalysis } from "@/hooks/use-ai-coach-engine"
+import { callAICoach } from "@/lib/api-client"
 import type { DayEntry } from "@/types/planner"
+
+interface CoachAnalysis {
+  strengthTrend: string
+  formAlert: string | null
+  recommendations: string[]
+}
 
 interface AiCoachPanelProps {
   weekIndex: number
@@ -64,10 +70,28 @@ export function AiCoachPanel({ weekIndex, dayIndex }: AiCoachPanelProps) {
     }
 
     setLoading(true)
-    analyzeWorkout(day as DayEntry)
+    const exerciseData = (day as DayEntry).training.map((ex) => ({
+      name: ex.name,
+      sets: ex.sets,
+      reps: ex.reps,
+      loadKg: ex.loadKg,
+      rpe: ex.rpe,
+      rpeNotes: ex.rpeNotes,
+    }))
+
+    callAICoach(exerciseData)
       .then((result) => {
-        setAnalysis(result)
-        lastSignatureRef.current = currentSignature
+        if (result.success && result.analysis) {
+          setAnalysis(result.analysis)
+          lastSignatureRef.current = currentSignature
+        } else {
+          console.error("[v0] Coach panel error:", result.error)
+          setAnalysis({
+            strengthTrend: "Analysis error",
+            formAlert: "Unable to generate",
+            recommendations: [],
+          })
+        }
       })
       .catch((err) => {
         console.error("[v0] Coach panel error:", err)
@@ -92,11 +116,21 @@ export function AiCoachPanel({ weekIndex, dayIndex }: AiCoachPanelProps) {
       
       setLoading(true)
       const currentSignature = createDataSignature(day)
+      const exerciseData = (day as DayEntry).training.map((ex) => ({
+        name: ex.name,
+        sets: ex.sets,
+        reps: ex.reps,
+        loadKg: ex.loadKg,
+        rpe: ex.rpe,
+        rpeNotes: ex.rpeNotes,
+      }))
       
-      analyzeWorkout(day as DayEntry)
+      callAICoach(exerciseData)
         .then((result) => {
-          setAnalysis(result)
-          lastSignatureRef.current = currentSignature
+          if (result.success && result.analysis) {
+            setAnalysis(result.analysis)
+            lastSignatureRef.current = currentSignature
+          }
         })
         .catch((err) => {
           console.error("[v0] Coach panel demo retry:", err)
