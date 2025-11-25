@@ -1,60 +1,100 @@
 import { createClient } from "@supabase/supabase-js";
 
-// Use Replit's built-in PostgreSQL database
-// Credentials are in DATABASE_URL environment variable
-const DATABASE_URL = process.env.DATABASE_URL || "";
+const supabaseUrl = process.env.SUPABASE_URL || "";
+const supabaseKey = process.env.SUPABASE_ANON_KEY || "";
 
-// Parse PostgreSQL connection string to Supabase format
-function createSupabaseClient() {
-  if (!DATABASE_URL) {
-    console.warn("[Supabase] DATABASE_URL not set - using localStorage only");
+let supabaseClient: any = null;
+
+function getSupabaseClient() {
+  if (!supabaseUrl || !supabaseKey) {
+    console.warn("[Supabase] Missing credentials - falling back to localStorage only");
     return null;
   }
 
-  try {
-    // For Replit's PostgreSQL, we create a direct postgres client connection
-    // This is a simple wrapper that handles saves
-    return {
-      async saveState(userId: string, state: any) {
-        try {
-          const res = await fetch("/api/db/save-state", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ userId, state })
-          });
-          
-          if (!res.ok) {
-            console.warn("[Supabase] Save failed:", res.status);
-            return false;
-          }
-          return true;
-        } catch (err) {
-          console.warn("[Supabase] Save error:", err);
-          return false;
-        }
-      },
+  if (!supabaseClient) {
+    supabaseClient = createClient(supabaseUrl, supabaseKey);
+  }
 
-      async loadState(userId: string) {
-        try {
-          const res = await fetch(`/api/db/load-state?userId=${encodeURIComponent(userId)}`);
-          
-          if (!res.ok) {
-            console.warn("[Supabase] Load failed:", res.status);
-            return null;
-          }
-          
-          const data = await res.json();
-          return data.state || null;
-        } catch (err) {
-          console.warn("[Supabase] Load error:", err);
-          return null;
-        }
-      }
-    };
+  return supabaseClient;
+}
+
+export async function saveStateToSupabase(userId: string, state: any) {
+  const client = getSupabaseClient();
+  if (!client) return false;
+
+  try {
+    const { error } = await client
+      .from("planner_state")
+      .upsert({
+        user_id: userId,
+        state: state,
+        program_name: state.programName || null,
+        theme: state.theme || "dark-knight",
+        updated_at: new Date().toISOString()
+      } as any);
+
+    if (error) {
+      console.error("[Supabase] Save error:", error);
+      return false;
+    }
+    return true;
   } catch (err) {
-    console.warn("[Supabase] Init error:", err);
+    console.error("[Supabase] Save exception:", err);
+    return false;
+  }
+}
+
+export async function loadStateFromSupabase(userId: string) {
+  const client = getSupabaseClient();
+  if (!client) return null;
+
+  try {
+    const { data, error } = await client
+      .from("planner_state")
+      .select("state")
+      .eq("user_id", userId)
+      .single();
+
+    if (error) {
+      if (error.code === "PGRST116") {
+        // Not found - this is OK
+        return null;
+      }
+      console.error("[Supabase] Load error:", error);
+      return null;
+    }
+
+    return (data as any)?.state || null;
+  } catch (err) {
+    console.error("[Supabase] Load exception:", err);
     return null;
   }
 }
 
-export const supabase = createSupabaseClient();
+export async function initializeSupabaseTable() {
+  const client = getSupabaseClient();
+  if (!client) return;
+
+  try {
+    // Check if table exists by trying to query it
+    const { data, error } = await client
+      .from("planner_state")
+      .select("id")
+      .limit(1);
+
+    if (error && error.code === "PGRST116") {
+      console.log("[Supabase] Table exists but is empty");
+      return;
+    }
+
+    if (error && error.code?.includes("42P01")) {
+      console.log("[Supabase] Table does not exist, creating...");
+      // Table will be created via dashboard or migrations
+      return;
+    }
+
+    console.log("[Supabase] Table is ready");
+  } catch (err) {
+    console.error("[Supabase] Init error:", err);
+  }
+}

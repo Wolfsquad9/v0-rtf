@@ -1,14 +1,5 @@
 import { NextResponse } from "next/server";
-import { Pool } from "pg";
-
-const DATABASE_URL = process.env.DATABASE_URL || "";
-
-async function getPool() {
-  if (!DATABASE_URL) {
-    return null;
-  }
-  return new Pool({ connectionString: DATABASE_URL });
-}
+import { loadStateFromSupabase } from "@/lib/supabase";
 
 export async function GET(req: Request) {
   try {
@@ -22,29 +13,16 @@ export async function GET(req: Request) {
       );
     }
 
-    const pool = await getPool();
-    if (!pool) {
-      return NextResponse.json(
-        { state: null }
-      );
-    }
-
-    const result = await pool.query(
-      "SELECT state FROM planner_state WHERE user_id = $1",
-      [userId]
-    );
-
-    await pool.end();
-
-    if (result.rows.length === 0) {
-      return NextResponse.json({ state: null });
-    }
+    const state = await loadStateFromSupabase(userId);
 
     return NextResponse.json({
-      state: result.rows[0].state
+      state: state
     });
   } catch (err) {
-    console.error("[DB] Load error:", err);
-    return NextResponse.json({ state: null });
+    console.error("[API] Load error:", err);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
   }
 }
