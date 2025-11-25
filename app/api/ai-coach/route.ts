@@ -1,178 +1,68 @@
-import { NextResponse } from 'next/server'
-import { canAnalyze, cacheAnalysis, getCachedAnalysis, hashExerciseData } from '@/lib/rate-limit'
+import { Anthropic } from "@anthropic-ai/sdk";
+import { NextResponse } from "next/server";
 
-export const runtime = 'edge'
-export const maxDuration = 30
-
-export async function POST(request: Request) {
+export async function POST(req: Request) {
   try {
-    const apiKey = process.env.ANTHROPIC_API_KEY
+    const { dayData, apiKey } = await req.json();
 
-    const body = await request.json()
-    const { exerciseData, userId } = body
+    const meaningful = (dayData.training || []).filter((ex: any) =>
+      ex.name ||
+      ex.notes ||
+      ex.sets.some((s: any) => s.reps || s.weight || s.rpe)
+    );
 
-    if (!exerciseData || !Array.isArray(exerciseData)) {
-      return NextResponse.json(
-        { error: 'INVALID_DATA', message: 'Exercise data must be an array' },
-        { status: 400 }
-      )
+    if (meaningful.length === 0) {
+      return NextResponse.json({ empty: true });
     }
 
-    const exerciseHash = hashExerciseData(exerciseData)
-    const tempUserId = userId || 'anonymous'
-
-    // Check cache first
-    const cached = getCachedAnalysis(tempUserId, exerciseHash)
-    if (cached) {
+    // DEMO MODE
+    if (!apiKey || apiKey === "TEST") {
       return NextResponse.json({
-        success: true,
-        analysis: cached,
-        tokensUsed: 0,
-        cached: true,
-        timestamp: new Date().toISOString()
-      })
+        strengthTrend: "Maintaining strength with stable RPE.",
+        recoveryStatus: "Moderate fatigue — consider light mobility.",
+        techniqueFlags: ["Watch lower-back rounding on hinge movements."],
+        recommendedChanges: ["Add 1–2% load next week.", "Add 1 extra back-off set."],
+        demoMode: true
+      });
     }
 
-    // Check rate limit
-    if (!canAnalyze(tempUserId, exerciseHash)) {
-      return NextResponse.json(
-        { 
-          error: 'RATE_LIMITED',
-          message: 'Please wait 10 seconds between analyses',
-          retryAfter: 10
-        },
-        { status: 429 }
-      )
-    }
+    const client = new Anthropic({ apiKey });
 
-    if (!apiKey) {
-      const demoAnalysis = generateDemoAnalysis(exerciseData)
-      cacheAnalysis(tempUserId, exerciseHash, demoAnalysis)
-      return NextResponse.json(
-        { 
-          error: 'AI_UNAVAILABLE',
-          message: 'Running in demo mode. Add ANTHROPIC_API_KEY to enable real analysis.',
-          analysis: demoAnalysis,
-          isDemo: true,
-          tokensUsed: 0,
-          timestamp: new Date().toISOString()
-        },
-        { status: 200 }
-      )
-    }
+    const prompt = `
+You are an expert strength coach. Analyze this workout:
 
-    // Call Anthropic API
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-3-5-sonnet-20241022",
-        max_tokens: 400,
-        messages: [
-          {
-            role: "user",
-            content: buildWorkoutAnalysisPrompt(exerciseData),
-          },
-        ],
-      }),
-    })
+${JSON.stringify(meaningful, null, 2)}
 
-    if (!response.ok) {
-      const error = await response.text()
-      console.error("[v0] Anthropic API error:", error)
-      return NextResponse.json(
-        { 
-          error: 'API_ERROR',
-          message: 'Failed to generate analysis. Please try again.',
-          analysis: generateDemoAnalysis(exerciseData),
-          isDemo: true,
-          tokensUsed: 0,
-          timestamp: new Date().toISOString()
-        },
-        { status: 200 }
-      )
-    }
-
-    const data = await response.json()
-    const content = data.content[0]?.text || ""
-
-    // Parse JSON response
-    const jsonMatch = content.match(/\{[\s\S]*\}/)
-    let analysis = content
-
-    if (jsonMatch) {
-      try {
-        const parsed = JSON.parse(jsonMatch[0])
-        analysis = JSON.stringify({
-          strengthTrend: parsed.strengthTrend || "Session complete",
-          formAlert: parsed.formAlert || null,
-          recommendations: Array.isArray(parsed.recommendations) ? parsed.recommendations.slice(0, 3) : [],
-        })
-      } catch (e) {
-        console.error("Parse error:", e)
-      }
-    }
-
-    cacheAnalysis(tempUserId, exerciseHash, analysis)
-
-    return NextResponse.json({
-      success: true,
-      analysis: analysis,
-      tokensUsed: data.usage.input_tokens + data.usage.output_tokens,
-      cached: false,
-      timestamp: new Date().toISOString()
-    })
-
-  } catch (error: any) {
-    console.error('AI Coach API Error:', error)
-    
-    return NextResponse.json(
-      { 
-        error: 'API_ERROR',
-        message: 'Failed to generate analysis. Please try again.',
-        analysis: generateDemoAnalysis([]),
-        isDemo: true,
-        tokensUsed: 0,
-        timestamp: new Date().toISOString()
-      },
-      { status: 200 }
-    )
-  }
-}
-
-function buildWorkoutAnalysisPrompt(exerciseData: any[]): string {
-  const workoutSummary = exerciseData
-    .map((ex) => `- ${ex.name}: ${ex.sets}x${ex.reps} @ ${ex.loadKg}kg (RPE ${ex.rpe})`)
-    .join("\n") || "No exercises logged"
-
-  return `You are a professional strength and conditioning coach analyzing a training session.
-
-Session Data:
-- Exercises: 
-${workoutSummary}
-
-Provide analysis in exactly this JSON format:
+Respond ONLY in JSON:
 {
-  "strengthTrend": "One sentence observation about intensity/progression (max 60 chars)",
-  "formAlert": "One specific technical cue or warning (max 60 chars) or 'No alerts' if form looks good",
-  "recommendations": ["Short recommendation 1", "Short recommendation 2", "Short recommendation 3"]
+  "strengthTrend": "...",
+  "recoveryStatus": "...",
+  "techniqueFlags": ["..."],
+  "recommendedChanges": ["..."]
 }
+`;
 
-Be concise, specific, and actionable.`
-}
+    const msg = await client.messages.create({
+      model: "claude-3-5-sonnet-latest",
+      max_tokens: 400,
+      messages: [{ role: "user", content: prompt }]
+    });
 
-function generateDemoAnalysis(exerciseData: any[]): string {
-  return JSON.stringify({
-    strengthTrend: "🤖 DEMO MODE - Training load appropriate for progressive overload",
-    formAlert: "Maintain controlled tempo on eccentric phase",
-    recommendations: [
-      "Add 5lbs to main lifts next session if RPE stays 7-8",
-      "Incorporate a deload week after 3-4 weeks of progression",
-      "Track bar speed to detect fatigue earlier"
-    ]
-  })
+    let parsed = {};
+    try {
+      parsed = JSON.parse(msg.content[0].text);
+    } catch {
+      parsed = {
+        strengthTrend: "Data unclear.",
+        recoveryStatus: "Proceed cautiously.",
+        techniqueFlags: [],
+        recommendedChanges: []
+      };
+    }
+
+    return NextResponse.json(parsed);
+  } catch (err) {
+    console.error("AI Coach server error:", err);
+    return NextResponse.json({ error: true });
+  }
 }
