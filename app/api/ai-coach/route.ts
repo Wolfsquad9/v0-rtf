@@ -1,14 +1,14 @@
-import { Anthropic } from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   try {
     const { dayData, apiKey } = await req.json();
 
-    const meaningful = (dayData.training || []).filter((ex: any) =>
+    const meaningful = (dayData?.training || []).filter((ex: any) =>
       ex.name ||
       ex.notes ||
-      ex.sets.some((s: any) => s.reps || s.weight || s.rpe)
+      (Array.isArray(ex.sets) && ex.sets.some((s: any) => s.reps || s.weight || s.rpe)) ||
+      (typeof ex.sets === 'number' && ex.sets > 0)
     );
 
     if (meaningful.length === 0) {
@@ -26,8 +26,6 @@ export async function POST(req: Request) {
       });
     }
 
-    const client = new Anthropic({ apiKey });
-
     const prompt = `
 You are an expert strength coach. Analyze this workout:
 
@@ -42,15 +40,35 @@ Respond ONLY in JSON:
 }
 `;
 
-    const msg = await client.messages.create({
-      model: "claude-3-5-sonnet-latest",
-      max_tokens: 400,
-      messages: [{ role: "user", content: prompt }]
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "claude-3-5-sonnet-20241022",
+        max_tokens: 400,
+        messages: [{ role: "user", content: prompt }]
+      })
     });
 
+    if (!response.ok) {
+      return NextResponse.json({
+        strengthTrend: "API error",
+        recoveryStatus: "Check API key",
+        techniqueFlags: [],
+        recommendedChanges: []
+      });
+    }
+
+    const data = await response.json();
     let parsed = {};
+    
     try {
-      parsed = JSON.parse(msg.content[0].text);
+      const text = data.content?.[0]?.text || "";
+      parsed = JSON.parse(text);
     } catch {
       parsed = {
         strengthTrend: "Data unclear.",
@@ -63,6 +81,11 @@ Respond ONLY in JSON:
     return NextResponse.json(parsed);
   } catch (err) {
     console.error("AI Coach server error:", err);
-    return NextResponse.json({ error: true });
+    return NextResponse.json({ 
+      strengthTrend: "Error",
+      recoveryStatus: "Try again",
+      techniqueFlags: [],
+      recommendedChanges: []
+    });
   }
 }

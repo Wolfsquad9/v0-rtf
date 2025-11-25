@@ -152,7 +152,7 @@ export const DailyLog = memo(function DailyLog({ weekId, dayId }: DailyLogProps)
         </CardContent>
       </Card>
 
-      <AICoachPanel dayData={day} apiKey={state?.anthropicApiKey || null} />
+      <AICoachPanel dayData={day} apiKey={null} />
 
       <HabitRecoveryTracker weekId={weekId} dayId={dayId} />
     </>

@@ -6,6 +6,10 @@ export async function analyzeWorkout(dayData: any, apiKey: string | null) {
       body: JSON.stringify({ dayData, apiKey })
     });
 
+    if (!res.ok) {
+      return null;
+    }
+
     return await res.json();
   } catch (err) {
     console.error("Client AI error:", err);
