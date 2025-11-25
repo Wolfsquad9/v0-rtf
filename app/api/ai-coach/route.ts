@@ -1,21 +1,65 @@
 import { NextResponse } from "next/server";
+import { getRateLimitKey, checkRateLimit, validateDayData, sanitizeDayData } from "@/lib/api-security";
 
 export async function POST(req: Request) {
   try {
-    const { dayData, apiKey } = await req.json();
+    // 1. RATE LIMITING
+    const rateLimitKey = getRateLimitKey(req);
+    const { allowed, remaining } = checkRateLimit(rateLimitKey);
 
-    const meaningful = (dayData?.training || []).filter((ex: any) =>
+    if (!allowed) {
+      return NextResponse.json(
+        { error: "Too many requests. Please wait a moment." },
+        { 
+          status: 429,
+          headers: { "Retry-After": "60" }
+        }
+      );
+    }
+
+    // 2. REQUEST VALIDATION
+    let body;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid request body" },
+        { status: 400 }
+      );
+    }
+
+    const { dayData } = body;
+
+    // Validate input
+    if (!validateDayData(dayData)) {
+      return NextResponse.json(
+        { error: "Invalid day data format" },
+        { status: 400 }
+      );
+    }
+
+    // Sanitize input to prevent injection
+    const sanitized = sanitizeDayData(dayData);
+
+    const meaningful = sanitized.training.filter((ex: any) =>
       ex.name ||
-      ex.notes ||
-      (Array.isArray(ex.sets) && ex.sets.some((s: any) => s.reps || s.weight || s.rpe)) ||
-      (typeof ex.sets === 'number' && ex.sets > 0)
+      ex.rpeNotes ||
+      ex.sets > 0 ||
+      ex.reps > 0 ||
+      ex.loadKg > 0
     );
 
     if (meaningful.length === 0) {
-      return NextResponse.json({ empty: true });
+      return NextResponse.json({
+        empty: true,
+        demoMode: false
+      });
     }
 
-    // DEMO MODE
+    // 3. GET API KEY FROM SERVER ONLY (NOT FROM CLIENT)
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+
+    // DEMO MODE - no API key configured
     if (!apiKey || apiKey === "TEST") {
       return NextResponse.json({
         strengthTrend: "Maintaining strength with stable RPE.",
@@ -26,6 +70,7 @@ export async function POST(req: Request) {
       });
     }
 
+    // 4. CALL ANTHROPIC API WITH SERVER-SIDE KEY
     const prompt = `
 You are an expert strength coach. Analyze this workout:
 
@@ -40,6 +85,9 @@ Respond ONLY in JSON:
 }
 `;
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -51,15 +99,22 @@ Respond ONLY in JSON:
         model: "claude-3-5-sonnet-20241022",
         max_tokens: 400,
         messages: [{ role: "user", content: prompt }]
-      })
+      }),
+      signal: controller.signal
     });
 
+    clearTimeout(timeoutId);
+
     if (!response.ok) {
+      console.error("[AI Coach] Anthropic API error:", response.status, response.statusText);
+      
+      // Return demo if API fails
       return NextResponse.json({
-        strengthTrend: "API error",
-        recoveryStatus: "Check API key",
+        strengthTrend: "API temporarily unavailable",
+        recoveryStatus: "Falling back to demo analysis",
         techniqueFlags: [],
-        recommendedChanges: []
+        recommendedChanges: ["Check back in a moment"],
+        demoMode: true
       });
     }
 
@@ -69,7 +124,8 @@ Respond ONLY in JSON:
     try {
       const text = data.content?.[0]?.text || "";
       parsed = JSON.parse(text);
-    } catch {
+    } catch (e) {
+      console.error("[AI Coach] Parse error:", e);
       parsed = {
         strengthTrend: "Data unclear.",
         recoveryStatus: "Proceed cautiously.",
@@ -78,14 +134,28 @@ Respond ONLY in JSON:
       };
     }
 
-    return NextResponse.json(parsed);
-  } catch (err) {
-    console.error("AI Coach server error:", err);
-    return NextResponse.json({ 
-      strengthTrend: "Error",
-      recoveryStatus: "Try again",
-      techniqueFlags: [],
-      recommendedChanges: []
+    // 5. ADD SECURITY HEADERS
+    const responseHeaders = new Headers({
+      "X-RateLimit-Remaining": remaining.toString(),
+      "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+      "Content-Type": "application/json"
     });
+
+    return NextResponse.json(parsed, { headers: responseHeaders });
+
+  } catch (err: any) {
+    if (err.name === "AbortError") {
+      console.error("[AI Coach] Request timeout");
+      return NextResponse.json(
+        { error: "Request timeout" },
+        { status: 504 }
+      );
+    }
+
+    console.error("[AI Coach] Unexpected error:", err);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
   }
 }
