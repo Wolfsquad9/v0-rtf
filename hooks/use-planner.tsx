@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react"
 import type { PlannerState, Week, DayEntry, ThemeName, VisionBoardItem, ProgressPhoto } from "@/types/planner"
-import { loadState, saveState, clearState } from "@/lib/storage"
+import { loadState, saveState, clearState, loadStateFromDatabase } from "@/lib/storage"
 import { addDays, startOfWeek } from "date-fns"
 
 const DEFAULT_WEEKS_COUNT = 12
@@ -84,13 +84,24 @@ export const PlannerProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    const loaded = loadState()
-    if (loaded) {
-      setState(loaded)
-    } else {
-      setState(generateInitialState())
+    const initializeState = async () => {
+      // Try to load from database first
+      const dbState = await loadStateFromDatabase()
+      if (dbState) {
+        setState(dbState)
+      } else {
+        // Fall back to localStorage
+        const stored = loadState()
+        if (stored) {
+          setState(stored)
+        } else {
+          setState(generateInitialState())
+        }
+      }
+      setIsLoading(false)
     }
-    setIsLoading(false)
+    
+    initializeState()
   }, [])
 
   useEffect(() => {

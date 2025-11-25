@@ -1,7 +1,21 @@
 import type { PlannerState } from "@/types/planner"
 import { logError } from "@/lib/error-handler"
+import { supabase } from "@/lib/supabase"
 
 const STORAGE_KEY = "rtf_planner_state_v1"
+const LAST_SYNC_KEY = "rtf_planner_last_sync_v1"
+
+// Generate a simple user ID from browser if not authenticated
+function getUserId(): string {
+  if (typeof window === "undefined") return "server"
+  
+  let userId = localStorage.getItem("rtf_user_id")
+  if (!userId) {
+    userId = `user_${Date.now()}_${Math.random().toString(36).substring(7)}`
+    localStorage.setItem("rtf_user_id", userId)
+  }
+  return userId
+}
 
 export const loadState = (): PlannerState | null => {
   if (typeof window === "undefined") return null
@@ -18,9 +32,20 @@ export const loadState = (): PlannerState | null => {
 
 export const saveState = (state: PlannerState): void => {
   if (typeof window === "undefined") return
+  
   try {
     const serialized = JSON.stringify(state)
+    
+    // Always save to localStorage first (offline draft)
     localStorage.setItem(STORAGE_KEY, serialized)
+    
+    // Try to sync to database in background (non-blocking)
+    if (supabase) {
+      const userId = getUserId()
+      supabase.saveState(userId, state).catch(err => {
+        console.warn("[Storage] Background sync failed:", err)
+      })
+    }
   } catch (e) {
     logError(e, "saveState")
     if (e instanceof Error && e.message.includes("quota")) {
@@ -30,10 +55,31 @@ export const saveState = (state: PlannerState): void => {
   }
 }
 
+export const loadStateFromDatabase = async (): Promise<PlannerState | null> => {
+  if (typeof window === "undefined" || !supabase) return null
+  
+  try {
+    const userId = getUserId()
+    const dbState = await supabase.loadState(userId)
+    
+    if (dbState) {
+      // Also update localStorage with latest from DB
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(dbState))
+      localStorage.setItem(LAST_SYNC_KEY, new Date().toISOString())
+    }
+    
+    return dbState
+  } catch (e) {
+    logError(e, "loadStateFromDatabase")
+    return null
+  }
+}
+
 export const clearState = (): void => {
   if (typeof window === "undefined") return
   try {
     localStorage.removeItem(STORAGE_KEY)
+    localStorage.removeItem(LAST_SYNC_KEY)
   } catch (e) {
     logError(e, "clearState")
   }
