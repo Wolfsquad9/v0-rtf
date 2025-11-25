@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { analyzeWorkout } from "@/hooks/use-ai-coach-engine";
 
-export default function AICoachPanel({ dayData, apiKey }) {
+export const AICoachPanel = ({ dayData, apiKey }: any) => {
   const [analysis, setAnalysis] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -92,4 +92,4 @@ export default function AICoachPanel({ dayData, apiKey }) {
       )}
     </div>
   );
-}
+};

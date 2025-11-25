@@ -7,10 +7,10 @@ import { Input } from "@/components/ui/input"
 import { RPESelector } from "./rpe-selector"
 import { RPENotes } from "./rpe-notes"
 import { HabitRecoveryTracker } from "./habit-recovery-tracker"
+import { AICoachPanel } from "./ai-coach-panel"
 import { cn } from "@/lib/utils"
 import { usePlanner } from "@/hooks/use-planner"
 import { getThemeColors } from "@/lib/themes"
-import { AiCoachPanel } from "./ai-coach-panel"
 
 interface DailyLogProps {
   weekId: string
@@ -152,7 +152,7 @@ export const DailyLog = memo(function DailyLog({ weekId, dayId }: DailyLogProps)
         </CardContent>
       </Card>
 
-      <AiCoachPanel weekIndex={weekIndex} dayIndex={dayIndex} />
+      <AICoachPanel dayData={day} apiKey={state?.anthropicApiKey || null} />
 
       <HabitRecoveryTracker weekId={weekId} dayId={dayId} />
     </>
