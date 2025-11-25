@@ -1,0 +1,208 @@
+Apply the following patch to my project.  
+This patch updates two files:
+1) components/planner/ai-coach-panel.tsx  
+2) hooks/use-ai-coach-engine.ts  
+
+It fixes:  
+- Infinite analysis loops  
+- Duplicate backend calls  
+- Missing loading guards  
+- Demo CTA showing at the wrong time  
+- Signature-based re-analysis  
+- Robust hidden/loading/analyzed state  
+- Analysis not resetting when day is empty  
+
+Use EXACTLY the code below and replace the files fully where shown.
+
+----------------------------------------------------------------------
+FILE: hooks/use-ai-coach-engine.ts
+----------------------------------------------------------------------
+
+Replace the entire file content with:
+
+----------------------------------------
+import { Anthropic } from "@anthropic-ai/sdk";
+
+interface AIResult {
+  strengthTrend: string;
+  recoveryStatus: string;
+  techniqueFlags: string[];
+  recommendedChanges: string[];
+  demoMode?: boolean;
+}
+
+export async function analyzeWorkout(dayData: any, apiKey: string | null) {
+  try {
+    // ---- Meaningful data detection ----
+    const meaningful = (dayData.training || []).filter((ex: any) =>
+      ex.name || ex.notes ||
+      ex.sets.some((s: any) => s.reps || s.weight || s.rpe)
+    );
+
+    if (meaningful.length === 0) {
+      return null; // Nothing to analyze
+    }
+
+    // ---- DEMO MODE ----
+    if (!apiKey || apiKey === "TEST") {
+      return {
+        strengthTrend: "Maintaining strength with stable RPE.",
+        recoveryStatus: "Moderate fatigue — consider light mobility.",
+        techniqueFlags: ["Watch lower-back rounding on hinge movements."],
+        recommendedChanges: ["Add 1–2% load next week.", "Add 1 extra back-off set."],
+        demoMode: true
+      };
+    }
+
+    // ---- REAL MODE ----
+    const client = new Anthropic({ apiKey });
+
+    const prompt = `
+You are an advanced strength coach. Analyze this workout:
+
+${JSON.stringify(meaningful, null, 2)}
+
+Respond ONLY in JSON:
+{
+  "strengthTrend": "...",
+  "recoveryStatus": "...",
+  "techniqueFlags": ["..."],
+  "recommendedChanges": ["..."]
+}
+`;
+
+    const msg = await client.messages.create({
+      model: "claude-3-5-sonnet-latest",
+      max_tokens: 400,
+      messages: [{ role: "user", content: prompt }]
+    });
+
+    const text = msg.content[0].text;
+    let parsed = null;
+
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      parsed = {
+        strengthTrend: "Data unclear.",
+        recoveryStatus: "Proceed cautiously.",
+        techniqueFlags: [],
+        recommendedChanges: []
+      };
+    }
+
+    return parsed;
+
+  } catch (err) {
+    console.error("AI Coach error:", err);
+    return null;
+  }
+}
+----------------------------------------
+
+
+----------------------------------------------------------------------
+FILE: components/planner/ai-coach-panel.tsx
+----------------------------------------------------------------------
+
+Replace the entire file content with:
+
+----------------------------------------
+"use client";
+
+import { useState, useEffect, useRef } from "react";
+import { analyzeWorkout } from "@/hooks/use-ai-coach-engine";
+
+export default function AICoachPanel({ dayData, apiKey }) {
+  const [analysis, setAnalysis] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  // Signature of meaningful data to detect changes
+  const prevSig = useRef("");
+
+  // ---- Extract meaningful data ----
+  const exercises = (dayData?.training || []).filter((ex) =>
+    ex.name ||
+    ex.notes ||
+    ex.sets.some((s) => s.reps || s.weight || s.rpe)
+  );
+
+  const signature = JSON.stringify(exercises);
+
+  // ---- Main analysis trigger ----
+  useEffect(() => {
+    // No meaningful data → hide panel
+    if (exercises.length === 0) {
+      setAnalysis(null);
+      prevSig.current = "";
+      setLoading(false);
+      return;
+    }
+
+    // If same signature → no re-analysis
+    if (signature === prevSig.current) return;
+
+    // Avoid double calls
+    if (loading) return;
+
+    setLoading(true);
+
+    // Debounce to prevent rapid-fire API calls
+    const timer = setTimeout(async () => {
+      const result = await analyzeWorkout(dayData, apiKey);
+      setAnalysis(result);
+      setLoading(false);
+      prevSig.current = signature;
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [signature, apiKey]);
+
+  // ---- Panel hidden state ----
+  if (exercises.length === 0) return null;
+
+  return (
+    <div className="border rounded-xl p-4 bg-card shadow-sm space-y-3">
+      <h2 className="text-lg font-semibold">AI Coach</h2>
+
+      {/* LOADING */}
+      {loading && (
+        <p className="text-muted-foreground">Analyzing your session…</p>
+      )}
+
+      {/* ANALYSIS SHOWN */}
+      {!loading && analysis && (
+        <div className="space-y-2">
+          <p><strong>Strength Trend:</strong> {analysis.strengthTrend}</p>
+          <p><strong>Recovery:</strong> {analysis.recoveryStatus}</p>
+
+          {analysis.techniqueFlags?.length > 0 && (
+            <ul className="text-sm list-disc ml-4">
+              {analysis.techniqueFlags.map((t, i) => (
+                <li key={i}>{t}</li>
+              ))}
+            </ul>
+          )}
+
+          {analysis.recommendedChanges?.length > 0 && (
+            <ul className="text-sm list-disc ml-4">
+              {analysis.recommendedChanges.map((c, i) => (
+                <li key={i}>{c}</li>
+              ))}
+            </ul>
+          )}
+
+          {/* DEMO CTA */}
+          {!loading && analysis?.demoMode && (
+            <p className="text-xs text-muted-foreground mt-2">
+              Running in demo mode — add a real API key to unlock full analysis.
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+----------------------------------------
+
+END OF PATCH.
