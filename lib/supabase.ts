@@ -25,13 +25,16 @@ export async function saveStateToSupabase(userId: string, state: any) {
   try {
     const { error } = await client
       .from("planner_state")
-      .upsert({
-        user_id: userId,
-        state: state,
-        program_name: state.programName || null,
-        theme: state.theme || "dark-knight",
-        updated_at: new Date().toISOString()
-      } as any);
+      .upsert(
+        {
+          user_id: userId,
+          state: state,
+          program_name: state.programName || null,
+          theme: state.theme || "dark-knight",
+          updated_at: new Date().toISOString()
+        },
+        { onConflict: "user_id" }
+      );
 
     if (error) {
       console.error("[Supabase] Save error:", error);
