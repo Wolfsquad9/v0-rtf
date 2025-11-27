@@ -67,41 +67,45 @@ export const AICoachPanel = ({ dayData, apiKey }: AICoachPanelProps) => {
         <p className="text-muted-foreground">Analyzing your session…</p>
       )}
 
-      {!loading && analysis && (
+      {!loading && analysis ? (
         <div className="space-y-2">
-          {analysis.strengthTrend && (
+          {analysis.strengthTrend && typeof analysis.strengthTrend === "string" && (
             <p>
               <strong>Strength Trend:</strong> {analysis.strengthTrend}
             </p>
           )}
-          {analysis.recoveryStatus && (
+          {analysis.recoveryStatus && typeof analysis.recoveryStatus === "string" && (
             <p>
               <strong>Recovery:</strong> {analysis.recoveryStatus}
             </p>
           )}
 
-          {analysis.techniqueFlags && analysis.techniqueFlags.length > 0 && (
+          {Array.isArray(analysis.techniqueFlags) && analysis.techniqueFlags.length > 0 && (
             <ul className="text-sm list-disc ml-4">
-              {analysis.techniqueFlags.map((t: string, i: number) => (
-                <li key={i}>{t}</li>
-              ))}
+              {analysis.techniqueFlags.map((t: any) => {
+                if (typeof t === "string") return <li key={t}>{t}</li>;
+                return null;
+              })}
             </ul>
           )}
 
-          {analysis.recommendedChanges && analysis.recommendedChanges.length > 0 && (
+          {Array.isArray(analysis.recommendedChanges) && analysis.recommendedChanges.length > 0 && (
             <ul className="text-sm list-disc ml-4">
-              {analysis.recommendedChanges.map((c: string, i: number) => (
-                <li key={i}>{c}</li>
-              ))}
+              {analysis.recommendedChanges.map((c: any) => {
+                if (typeof c === "string") return <li key={c}>{c}</li>;
+                return null;
+              })}
             </ul>
           )}
 
-          {analysis.demoMode && (
+          {analysis.demoMode === true && (
             <p className="text-xs text-muted-foreground mt-2">
               Running in demo mode — add a real API key to unlock full analysis.
             </p>
           )}
         </div>
+      ) : !loading && (
+        <p className="text-muted-foreground text-sm">Ready to analyze your workout data.</p>
       )}
     </div>
   );

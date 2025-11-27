@@ -119,19 +119,33 @@ Respond ONLY in JSON:
     }
 
     const data = await response.json();
-    let parsed = {};
+    
+    // Defensive parsing with guaranteed shape
+    let parsed: any = {
+      strengthTrend: "Analysis unavailable",
+      recoveryStatus: "Please try again",
+      techniqueFlags: [],
+      recommendedChanges: []
+    };
     
     try {
-      const text = data.content?.[0]?.text || "";
-      parsed = JSON.parse(text);
+      const text = data.content?.[0]?.text;
+      if (!text || typeof text !== "string") {
+        console.error("[AI Coach] No text in response:", data);
+      } else {
+        const extracted = JSON.parse(text);
+        
+        // Merge extracted with defaults to ensure all fields exist
+        parsed = {
+          strengthTrend: extracted?.strengthTrend || "Analysis unavailable",
+          recoveryStatus: extracted?.recoveryStatus || "Please try again",
+          techniqueFlags: Array.isArray(extracted?.techniqueFlags) ? extracted.techniqueFlags : [],
+          recommendedChanges: Array.isArray(extracted?.recommendedChanges) ? extracted.recommendedChanges : []
+        };
+      }
     } catch (e) {
       console.error("[AI Coach] Parse error:", e);
-      parsed = {
-        strengthTrend: "Data unclear.",
-        recoveryStatus: "Proceed cautiously.",
-        techniqueFlags: [],
-        recommendedChanges: []
-      };
+      // Keep defaults already set
     }
 
     // 5. ADD SECURITY HEADERS
