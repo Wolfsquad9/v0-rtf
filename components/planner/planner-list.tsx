@@ -113,14 +113,9 @@ export function PlannerList() {
             >
               {/* Visual divider before major sections */}
               {isDividerNeeded && (
-                <div
-                  className="my-6 h-px"
-                  style={{
-                    background: `linear-gradient(to right, transparent, ${theme.border}60, transparent)`,
-                  }}
-                />
+                <div className="my-10 h-px bg-border max-w-xs mx-auto opacity-50" />
               )}
-              <div className="pb-4">
+              <div className="pb-8">
                 {item.type === "command-center" && <CommandCenter />}
                 {item.type === "theme-switcher" && <ThemeSwitcher />}
                 {item.type === "metrics" && <CoreMetrics />}
