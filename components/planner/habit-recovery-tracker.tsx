@@ -38,110 +38,76 @@ export function HabitRecoveryTracker({ weekId, dayId }: HabitRecoveryTrackerProp
   ]
 
   return (
-    <Card
-      className="backdrop-blur border mt-6"
-      style={{
-        backgroundColor: theme.surface + "CC",
-        borderColor: theme.border + "60",
-      }}
-    >
-      <CardHeader style={{ borderBottom: `1px solid ${theme.border}40` }}>
-        <CardTitle className="text-sm font-mono uppercase tracking-wider flex items-center gap-2">
-          <Heart className="w-4 h-4" style={{ color: theme.primary }} />
-          <span style={{ color: theme.text }}>Habit & Recovery Tracker</span>
-        </CardTitle>
-        <p className="text-xs font-mono mt-2" style={{ color: theme.text + "99" }}>
-          Elite performance is built on consistent daily habits. Track your recovery protocols here.
+    <div className="border bg-card mt-6">
+      <div className="p-6 border-b flex flex-col gap-2">
+        <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
+          <Heart className="w-3.5 h-3.5" />
+          Recovery Protocol
+        </h3>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
+          Optimal adaptation requires disciplined recovery
         </p>
-      </CardHeader>
-      <CardContent className="pt-6 space-y-6">
+      </div>
+      <div className="p-6 space-y-8">
         {/* Habits Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
           {habits.map(({ key, label, icon: Icon }) => {
             const checked = day.habits?.[key] || false
             return (
               <div
                 key={key}
-                className="flex items-center space-x-3 p-3 rounded-lg border transition-all hover:scale-[1.02] cursor-pointer"
-                style={{
-                  backgroundColor: checked ? theme.primary + "20" : "transparent",
-                  borderColor: checked ? theme.primary + "60" : theme.border + "40",
-                }}
+                className={cn(
+                  "flex items-center space-x-3 p-4 border transition-colors cursor-pointer",
+                  checked ? "bg-primary/5 border-primary/30" : "hover:bg-muted/50"
+                )}
                 onClick={() => {
                   const newHabits = { ...day.habits, [key]: !checked }
                   updateDay(weekIndex, dayIndex, { habits: newHabits })
                 }}
               >
-                <Checkbox
-                  id={`${day.id}-${key}`}
-                  checked={checked}
-                  onCheckedChange={(c) => {
-                    const newHabits = { ...day.habits, [key]: !!c }
-                    updateDay(weekIndex, dayIndex, { habits: newHabits })
-                  }}
-                  style={{
-                    borderColor: checked ? theme.primary : theme.border,
-                  }}
-                />
-                <div className="flex-1 flex items-center gap-2">
-                  <Icon className="w-4 h-4" style={{ color: checked ? theme.primary : theme.text + "66" }} />
-                  <Label
-                    htmlFor={`${day.id}-${key}`}
-                    className="text-xs font-medium font-mono cursor-pointer"
-                    style={{ color: checked ? theme.text : theme.text + "99" }}
-                  >
+                <div className="flex-1 flex items-center gap-3">
+                  <Icon className={cn("w-4 h-4", checked ? "text-primary" : "text-muted-foreground/30")} />
+                  <span className={cn("text-[10px] font-bold uppercase tracking-widest", checked ? "text-foreground" : "text-muted-foreground/50")}>
                     {label}
-                  </Label>
+                  </span>
                 </div>
+                {checked && <div className="w-1.5 h-1.5 bg-primary" />}
               </div>
             )
           })}
         </div>
 
         {/* Recovery Metrics */}
-        <div
-          className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4"
-          style={{ borderTop: `1px solid ${theme.border}40` }}
-        >
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t">
           <div className="space-y-2">
-            <Label className="text-[10px] font-mono uppercase tracking-widest" style={{ color: theme.accent }}>
-              Sleep Hours
+            <Label className="text-[9px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
+              Sleep Duration
             </Label>
             <Input
               type="number"
               step="0.5"
               value={day.sleepHours || ""}
               onChange={(e) => updateDay(weekIndex, dayIndex, { sleepHours: Number(e.target.value) })}
-              className="h-10 text-center font-mono font-bold border"
-              style={{
-                backgroundColor: theme.background + "80",
-                borderColor: theme.border + "40",
-                color: theme.primary,
-              }}
-              placeholder="0"
+              className="h-10 text-center text-xs font-bold bg-background border rounded-none"
+              placeholder="0.0"
             />
           </div>
           <div className="space-y-2">
-            <Label className="text-[10px] font-mono uppercase tracking-widest" style={{ color: theme.accent }}>
-              Water (Liters)
+            <Label className="text-[9px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
+              Hydration (L)
             </Label>
             <Input
               type="number"
               step="0.5"
               value={day.waterIntake || ""}
               onChange={(e) => updateDay(weekIndex, dayIndex, { waterIntake: Number(e.target.value) })}
-              className="h-10 text-center font-mono font-bold border"
-              style={{
-                backgroundColor: theme.background + "80",
-                borderColor: theme.border + "40",
-                color: theme.primary,
-              }}
-              placeholder="0"
+              className="h-10 text-center text-xs font-bold bg-background border rounded-none"
+              placeholder="0.0"
             />
           </div>
           <div className="space-y-2">
-            <Label className="text-[10px] font-mono uppercase tracking-widest" style={{ color: theme.accent }}>
-              Stress Level (1-10)
+            <Label className="text-[9px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
+              Stress (1-10)
             </Label>
             <Input
               type="number"
@@ -149,35 +115,25 @@ export function HabitRecoveryTracker({ weekId, dayId }: HabitRecoveryTrackerProp
               max="10"
               value={day.stressLevel || ""}
               onChange={(e) => updateDay(weekIndex, dayIndex, { stressLevel: Number(e.target.value) })}
-              className="h-10 text-center font-mono font-bold border"
-              style={{
-                backgroundColor: theme.background + "80",
-                borderColor: theme.border + "40",
-                color: theme.primary,
-              }}
+              className="h-10 text-center text-xs font-bold bg-background border rounded-none"
               placeholder="5"
             />
           </div>
         </div>
 
         {/* Recovery Notes */}
-        <div className="space-y-2">
-          <Label className="text-[10px] font-mono uppercase tracking-widest" style={{ color: theme.accent }}>
-            Recovery & Wellness Notes
+        <div className="space-y-2 pt-6 border-t">
+          <Label className="text-[9px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
+            Protocol Notes
           </Label>
           <Textarea
             value={day.recoveryNotes || ""}
             onChange={(e) => updateDay(weekIndex, dayIndex, { recoveryNotes: e.target.value })}
-            placeholder="Log soreness, energy levels, mood, recovery protocols (ice bath, massage, etc.)..."
-            className="min-h-[80px] resize-none text-sm font-mono leading-relaxed border"
-            style={{
-              backgroundColor: theme.background + "80",
-              borderColor: theme.border + "40",
-              color: theme.text,
-            }}
+            placeholder="Document recovery state and wellness metrics..."
+            className="min-h-[80px] resize-none text-[10px] font-bold uppercase tracking-widest bg-background border rounded-none leading-relaxed"
           />
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }

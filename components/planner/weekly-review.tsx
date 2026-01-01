@@ -49,31 +49,18 @@ export function WeeklyReview({ weekId }: WeeklyReviewProps) {
   ]
 
   return (
-    <Card
-      className="backdrop-blur border mt-8"
-      style={{
-        backgroundColor: theme.surface + "E6",
-        borderColor: theme.border + "80",
-      }}
-    >
-      <CardHeader style={{ borderBottom: `2px solid ${theme.border}60` }}>
-        <CardTitle className="text-base font-mono uppercase tracking-wider flex items-center gap-2">
-          <LineChart className="w-5 h-5" style={{ color: theme.primary }} />
-          <span style={{ color: theme.text }}>Weekly Review & Strategy Session</span>
-        </CardTitle>
-        <p className="text-xs font-mono mt-2 leading-relaxed" style={{ color: theme.text + "CC" }}>
-          Reflection drives adaptation. Analyze your week, identify patterns, and strategize for continuous improvement.
-          This is where champions are made.
-        </p>
-      </CardHeader>
-      <CardContent className="pt-6 space-y-6">
+    <div className="border bg-card mt-12 shadow-none">
+      <div className="p-6 border-b bg-muted/30">
+        <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] flex items-center gap-3">
+          <LineChart className="w-4 h-4" />
+          Weekly Strategy Session
+        </h3>
+      </div>
+      <div className="p-6 space-y-8">
         {reviewFields.map(({ key, label, icon: Icon, placeholder }) => (
           <div key={key} className="space-y-3">
-            <Label
-              className="text-[10px] font-mono uppercase tracking-widest flex items-center gap-2"
-              style={{ color: theme.accent }}
-            >
-              <Icon className="w-3.5 h-3.5" style={{ color: theme.primary }} />
+            <Label className="text-[9px] font-bold uppercase tracking-[0.2em] flex items-center gap-2 text-muted-foreground">
+              <Icon className="w-3.5 h-3.5" />
               {label}
             </Label>
             <Textarea
@@ -83,16 +70,11 @@ export function WeeklyReview({ weekId }: WeeklyReviewProps) {
                 updateWeekReview(weekIndex, newReview)
               }}
               placeholder={placeholder}
-              className="min-h-[100px] resize-none text-sm font-mono leading-relaxed border"
-              style={{
-                backgroundColor: theme.background + "80",
-                borderColor: theme.border + "40",
-                color: theme.text,
-              }}
+              className="min-h-[120px] resize-none text-xs font-bold uppercase tracking-widest bg-background border rounded-none leading-relaxed placeholder:text-muted-foreground/30"
             />
           </div>
         ))}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }

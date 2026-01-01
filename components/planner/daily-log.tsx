@@ -36,71 +36,48 @@ export const DailyLog = memo(function DailyLog({ weekId, dayId }: DailyLogProps)
 
   return (
     <>
-      <Card
-        className={cn("backdrop-blur transition-all duration-200 border", isToday && "shadow-2xl")}
-        style={{
-          backgroundColor: theme.surface + (isToday ? "E6" : "CC"),
-          borderColor: isToday ? theme.primary : theme.border + "60",
-          boxShadow: isToday ? `0 0 40px ${theme.primary}30` : "none",
-        }}
+      <div
+        className={cn("bg-card border p-0 transition-all duration-300", isToday && "border-primary/50")}
       >
-        <CardHeader
-          className="pb-4 flex flex-row items-center justify-between space-y-0"
-          style={{ borderBottom: `1px solid ${theme.border}40` }}
-        >
+        <div className="p-6 border-b flex flex-row items-center justify-between bg-muted/30">
           <div className="space-y-1">
-            <CardTitle className="text-lg font-bold font-mono tracking-tight flex items-center gap-2">
-              <span style={{ color: theme.text }}>{format(date, "EEEE")}</span>
+            <h3 className="text-sm font-bold uppercase tracking-[0.1em] flex items-center gap-3">
+              <span>{format(date, "EEEE")}</span>
               {isToday && (
-                <span
-                  className="text-[10px] font-mono px-2 py-0.5 rounded-sm font-bold uppercase tracking-wide"
-                  style={{
-                    backgroundColor: theme.primary,
-                    color: theme.background,
-                  }}
-                >
-                  Today
+                <span className="text-[9px] font-bold px-2 py-0.5 bg-primary text-primary-foreground uppercase tracking-widest">
+                  Active
                 </span>
               )}
-            </CardTitle>
-            <p className="text-xs font-mono uppercase tracking-wider" style={{ color: theme.text + "99" }}>
+            </h3>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
               {format(date, "MMM d, yyyy")}
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="text-[10px] font-mono uppercase tracking-widest" style={{ color: theme.accent }}>
-              Session RPE
+          <div className="flex items-center gap-4">
+            <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
+              Intensity
             </span>
             <RPESelector value={day.rpe || 0} onChange={(val) => updateDay(weekIndex, dayIndex, { rpe: val })} />
           </div>
-        </CardHeader>
-        <CardContent className="pt-6 space-y-8">
-          {/* Exercises Grid */}
-          <div className="space-y-3">
-            <div
-              className="grid grid-cols-12 gap-3 text-[10px] font-mono uppercase tracking-widest px-1"
-              style={{ color: theme.accent }}
-            >
+        </div>
+        <div className="p-6 space-y-8">
+          <div className="space-y-4">
+            <div className="grid grid-cols-12 gap-4 text-[9px] font-bold uppercase tracking-[0.2em] text-muted-foreground px-1">
               <div className="col-span-5">Movement</div>
               <div className="col-span-2 text-center">Sets</div>
               <div className="col-span-2 text-center">Reps</div>
               <div className="col-span-3 text-center">Load (KG)</div>
             </div>
-            <div className="space-y-6">
+            <div className="space-y-4">
               {day.training?.map((ex, idx) => (
-                <div key={ex.id} className="space-y-0">
-                  <div className="grid grid-cols-12 gap-3 items-center group">
+                <div key={ex.id} className="space-y-2">
+                  <div className="grid grid-cols-12 gap-4 items-center">
                     <div className="col-span-5">
                       <Input
                         value={ex.name}
                         onChange={(e) => updateExercise(weekIndex, dayIndex, idx, "name", e.target.value)}
-                        className="h-9 transition-all text-sm font-medium border"
-                        style={{
-                          backgroundColor: theme.background + "60",
-                          borderColor: theme.border + "40",
-                          color: theme.text,
-                        }}
-                        placeholder="Exercise name..."
+                        className="h-10 text-xs font-bold uppercase tracking-wide bg-background border rounded-none"
+                        placeholder="EXERCISE"
                       />
                     </div>
                     <div className="col-span-2">
@@ -108,12 +85,7 @@ export const DailyLog = memo(function DailyLog({ weekId, dayId }: DailyLogProps)
                         type="number"
                         value={ex.sets || ""}
                         onChange={(e) => updateExercise(weekIndex, dayIndex, idx, "sets", Number(e.target.value))}
-                        className="h-9 transition-all text-center text-sm font-mono border"
-                        style={{
-                          backgroundColor: theme.background + "60",
-                          borderColor: theme.border + "40",
-                          color: theme.text,
-                        }}
+                        className="h-10 text-center text-xs font-bold bg-background border rounded-none"
                       />
                     </div>
                     <div className="col-span-2">
@@ -121,12 +93,7 @@ export const DailyLog = memo(function DailyLog({ weekId, dayId }: DailyLogProps)
                         type="number"
                         value={ex.reps || ""}
                         onChange={(e) => updateExercise(weekIndex, dayIndex, idx, "reps", Number(e.target.value))}
-                        className="h-9 transition-all text-center text-sm font-mono border"
-                        style={{
-                          backgroundColor: theme.background + "60",
-                          borderColor: theme.border + "40",
-                          color: theme.text,
-                        }}
+                        className="h-10 text-center text-xs font-bold bg-background border rounded-none"
                       />
                     </div>
                     <div className="col-span-3">
@@ -134,13 +101,8 @@ export const DailyLog = memo(function DailyLog({ weekId, dayId }: DailyLogProps)
                         type="number"
                         value={ex.loadKg || ""}
                         onChange={(e) => updateExercise(weekIndex, dayIndex, idx, "loadKg", Number(e.target.value))}
-                        className="h-9 transition-all text-center text-sm font-mono font-bold border"
-                        style={{
-                          backgroundColor: theme.background + "60",
-                          borderColor: theme.border + "40",
-                          color: theme.primary,
-                        }}
-                        placeholder="-"
+                        className="h-10 text-center text-xs font-bold bg-background border-primary/30 rounded-none text-primary"
+                        placeholder="0.0"
                       />
                     </div>
                   </div>
@@ -149,8 +111,8 @@ export const DailyLog = memo(function DailyLog({ weekId, dayId }: DailyLogProps)
               ))}
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       <AICoachPanel dayData={day} apiKey={null} />
 

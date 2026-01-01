@@ -28,46 +28,26 @@ export function CommandCenter() {
   }
 
   return (
-    <Card className="bg-zinc-950/80 backdrop-blur border-zinc-800">
-      <CardHeader>
-        <CardTitle className="font-mono uppercase tracking-wider flex items-center gap-2">
-          <span style={{ color: theme.primary }}>●</span>
-          Command Center
-        </CardTitle>
-        <p className="text-xs text-zinc-400 mt-2">
-          Mission control for your 12-week transformation. Navigate to any section instantly.
-        </p>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-2 gap-2">
-          {sections.map(({ id, label, icon: Icon }) => (
-            <Button
-              key={id}
-              onClick={() => scrollToSection(id)}
-              variant="outline"
-              className="justify-start gap-2 font-mono text-xs h-auto py-3"
-              style={{
-                borderColor: theme.border + "60",
-                color: theme.text,
-              }}
-            >
-              <Icon className="w-4 h-4" style={{ color: theme.primary }} />
-              {label}
-            </Button>
-          ))}
+    <div className="border bg-card p-6 shadow-none space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Command Center</h2>
+        <div className="px-2 py-0.5 border text-[10px] font-bold uppercase tracking-widest bg-secondary">
+          Phase 01
         </div>
-        <Button
-          onClick={exportToPDF}
-          className="w-full mt-3 font-mono text-xs"
-          style={{
-            backgroundColor: theme.primary,
-            color: theme.background,
-          }}
-        >
-          <Download className="w-4 h-4 mr-2" />
-          Export to PDF
-        </Button>
-      </CardContent>
-    </Card>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        {sections.map(({ id, label, icon: Icon }) => (
+          <Button
+            key={id}
+            onClick={() => scrollToSection(id)}
+            variant="outline"
+            className="justify-start gap-3 h-auto py-4 px-4 border text-[10px] font-bold uppercase tracking-widest hover:bg-secondary transition-colors"
+          >
+            <Icon className="w-3.5 h-3.5 text-muted-foreground" />
+            {label}
+          </Button>
+        ))}
+      </div>
+    </div>
   )
 }
