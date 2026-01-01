@@ -2,7 +2,6 @@
 
 import { memo } from "react"
 import { format } from "date-fns"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { RPESelector } from "./rpe-selector"
 import { RPENotes } from "./rpe-notes"
@@ -10,7 +9,6 @@ import { HabitRecoveryTracker } from "./habit-recovery-tracker"
 import { AICoachPanel } from "./ai-coach-panel"
 import { cn } from "@/lib/utils"
 import { usePlanner } from "@/hooks/use-planner"
-import { getThemeColors } from "@/lib/themes"
 
 interface DailyLogProps {
   weekId: string
@@ -19,7 +17,6 @@ interface DailyLogProps {
 
 export const DailyLog = memo(function DailyLog({ weekId, dayId }: DailyLogProps) {
   const { state, updateDay, updateExercise } = usePlanner()
-  const theme = getThemeColors(state?.theme || "dark-knight")
 
   if (!state) return null
 
@@ -35,49 +32,53 @@ export const DailyLog = memo(function DailyLog({ weekId, dayId }: DailyLogProps)
   const isToday = new Date().toDateString() === date.toDateString()
 
   return (
-    <>
+    <div className="space-y-0.5">
       <div
-        className={cn("bg-card border p-0 transition-all duration-300", isToday && "border-primary/50")}
+        className={cn("bg-card border transition-all duration-500", isToday ? "border-primary/40 shadow-2xl shadow-primary/5" : "border-border/60")}
       >
-        <div className="p-6 border-b flex flex-row items-center justify-between bg-muted/30">
-          <div className="space-y-1">
-            <h3 className="text-sm font-bold uppercase tracking-[0.1em] flex items-center gap-3">
-              <span>{format(date, "EEEE")}</span>
+        <div className="p-8 border-b flex flex-col md:flex-row md:items-center justify-between gap-6 bg-muted/10">
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-4">
+              <h3 className="text-lg font-bold uppercase tracking-[0.15em]">
+                {format(date, "EEEE")}
+              </h3>
               {isToday && (
-                <span className="text-[9px] font-bold px-2 py-0.5 bg-primary text-primary-foreground uppercase tracking-widest">
-                  Active
-                </span>
+                <div className="flex items-center gap-2 px-2 py-0.5 border border-primary/30 bg-primary/5">
+                  <span className="w-1 h-1 bg-primary animate-pulse" />
+                  <span className="text-[9px] font-bold text-primary uppercase tracking-[0.2em]">Live Session</span>
+                </div>
               )}
-            </h3>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              {format(date, "MMM d, yyyy")}
+            </div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/50">
+              {format(date, "MMMM dd // yyyy")}
             </p>
           </div>
-          <div className="flex items-center gap-4">
-            <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
-              Intensity
-            </span>
+          <div className="flex items-center gap-6">
+            <div className="text-right hidden md:block">
+              <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-muted-foreground/40">Load Intensity</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest">RPE Profile</p>
+            </div>
             <RPESelector value={day.rpe || 0} onChange={(val) => updateDay(weekIndex, dayIndex, { rpe: val })} />
           </div>
         </div>
-        <div className="p-6 space-y-8">
-          <div className="space-y-4">
-            <div className="grid grid-cols-12 gap-4 text-[9px] font-bold uppercase tracking-[0.2em] text-muted-foreground px-1">
-              <div className="col-span-5">Movement</div>
-              <div className="col-span-2 text-center">Sets</div>
-              <div className="col-span-2 text-center">Reps</div>
-              <div className="col-span-3 text-center">Load (KG)</div>
+        <div className="p-8 space-y-10">
+          <div className="space-y-6">
+            <div className="grid grid-cols-12 gap-6 text-[9px] font-bold uppercase tracking-[0.3em] text-muted-foreground/40 px-1">
+              <div className="col-span-5">Movement Protocol</div>
+              <div className="col-span-2 text-center text-[10px]">Sets</div>
+              <div className="col-span-2 text-center text-[10px]">Reps</div>
+              <div className="col-span-3 text-center text-[10px]">Volume (KG)</div>
             </div>
             <div className="space-y-4">
               {day.training?.map((ex, idx) => (
-                <div key={ex.id} className="space-y-2">
-                  <div className="grid grid-cols-12 gap-4 items-center">
+                <div key={ex.id} className="space-y-3">
+                  <div className="grid grid-cols-12 gap-6 items-center">
                     <div className="col-span-5">
                       <Input
                         value={ex.name}
                         onChange={(e) => updateExercise(weekIndex, dayIndex, idx, "name", e.target.value)}
-                        className="h-10 text-xs font-bold uppercase tracking-wide bg-background border rounded-none"
-                        placeholder="EXERCISE"
+                        className="h-11 text-[11px] font-bold uppercase tracking-widest bg-background/50 border rounded-none focus-visible:ring-primary/10 transition-all"
+                        placeholder="UNSPECIFIED MOVEMENT"
                       />
                     </div>
                     <div className="col-span-2">
@@ -85,7 +86,7 @@ export const DailyLog = memo(function DailyLog({ weekId, dayId }: DailyLogProps)
                         type="number"
                         value={ex.sets || ""}
                         onChange={(e) => updateExercise(weekIndex, dayIndex, idx, "sets", Number(e.target.value))}
-                        className="h-10 text-center text-xs font-bold bg-background border rounded-none"
+                        className="h-11 text-center text-xs font-bold bg-background/50 border rounded-none"
                       />
                     </div>
                     <div className="col-span-2">
@@ -93,7 +94,7 @@ export const DailyLog = memo(function DailyLog({ weekId, dayId }: DailyLogProps)
                         type="number"
                         value={ex.reps || ""}
                         onChange={(e) => updateExercise(weekIndex, dayIndex, idx, "reps", Number(e.target.value))}
-                        className="h-10 text-center text-xs font-bold bg-background border rounded-none"
+                        className="h-11 text-center text-xs font-bold bg-background/50 border rounded-none"
                       />
                     </div>
                     <div className="col-span-3">
@@ -101,7 +102,7 @@ export const DailyLog = memo(function DailyLog({ weekId, dayId }: DailyLogProps)
                         type="number"
                         value={ex.loadKg || ""}
                         onChange={(e) => updateExercise(weekIndex, dayIndex, idx, "loadKg", Number(e.target.value))}
-                        className="h-10 text-center text-xs font-bold bg-background border-primary/30 rounded-none text-primary"
+                        className="h-11 text-center text-xs font-bold bg-background/50 border-primary/20 rounded-none text-primary focus-visible:ring-primary/20 transition-all"
                         placeholder="0.0"
                       />
                     </div>
@@ -115,8 +116,7 @@ export const DailyLog = memo(function DailyLog({ weekId, dayId }: DailyLogProps)
       </div>
 
       <AICoachPanel dayData={day} apiKey={null} />
-
       <HabitRecoveryTracker weekId={weekId} dayId={dayId} />
-    </>
+    </div>
   )
 })

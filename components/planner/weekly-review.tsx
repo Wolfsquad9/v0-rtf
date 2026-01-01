@@ -1,11 +1,10 @@
 "use client"
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { usePlanner } from "@/hooks/use-planner"
+import { LineChart } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { getThemeColors } from "@/lib/themes"
-import { usePlanner } from "@/hooks/use-planner"
-import { LineChart, Target, AlertCircle, TrendingUp } from "lucide-react"
+import { TrendingUp, AlertCircle, Target } from "lucide-react"
 
 interface WeeklyReviewProps {
   weekId: string
@@ -13,7 +12,6 @@ interface WeeklyReviewProps {
 
 export function WeeklyReview({ weekId }: WeeklyReviewProps) {
   const { state, updateWeekReview } = usePlanner()
-  const theme = getThemeColors(state?.theme || "dark-knight")
 
   if (!state) return null
 
@@ -24,56 +22,59 @@ export function WeeklyReview({ weekId }: WeeklyReviewProps) {
   const reviewFields = [
     {
       key: "wins",
-      label: "Weekly Wins & Achievements",
+      label: "Mission Successes",
       icon: TrendingUp,
-      placeholder: "What went well? PRs hit? Consistency maintained? New skills mastered?",
+      placeholder: "DOCUMENT WEEKLY VICTORIES...",
     },
     {
       key: "challenges",
-      label: "Challenges & Obstacles",
+      label: "Operational Constraints",
       icon: AlertCircle,
-      placeholder: "What held you back? Technical issues? Recovery problems? Time constraints?",
+      placeholder: "IDENTIFY PERFORMANCE BOTTLENECKS...",
     },
     {
       key: "adjustments",
-      label: "Strategic Adjustments",
+      label: "Strategic Modifications",
       icon: LineChart,
-      placeholder: "What needs to change? Volume adjustments? Exercise swaps? Recovery protocols?",
+      placeholder: "DEFINE PROTOCOL EVOLUTION...",
     },
     {
       key: "nextWeek",
-      label: "Next Week Strategy",
+      label: "Next Phase Objective",
       icon: Target,
-      placeholder: "Primary focus? Intensity targets? Specific goals to accomplish?",
+      placeholder: "ESTABLISH PRIMARY TARGETS...",
     },
   ]
 
   return (
-    <div className="border bg-card mt-12 shadow-none">
-      <div className="p-6 border-b bg-muted/30">
-        <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] flex items-center gap-3">
+    <div className="border bg-card mt-16 shadow-none">
+      <div className="p-8 border-b bg-muted/20 flex items-center justify-between">
+        <h3 className="text-[10px] font-bold uppercase tracking-[0.4em] flex items-center gap-4 text-primary">
           <LineChart className="w-4 h-4" />
-          Weekly Strategy Session
+          Weekly Performance Review
         </h3>
+        <div className="h-px flex-1 mx-8 bg-border opacity-30" />
       </div>
-      <div className="p-6 space-y-8">
-        {reviewFields.map(({ key, label, icon: Icon, placeholder }) => (
-          <div key={key} className="space-y-3">
-            <Label className="text-[9px] font-bold uppercase tracking-[0.2em] flex items-center gap-2 text-muted-foreground">
-              <Icon className="w-3.5 h-3.5" />
-              {label}
-            </Label>
-            <Textarea
-              value={week.review?.[key] || ""}
-              onChange={(e) => {
-                const newReview = { ...week.review, [key]: e.target.value }
-                updateWeekReview(weekIndex, newReview)
-              }}
-              placeholder={placeholder}
-              className="min-h-[120px] resize-none text-xs font-bold uppercase tracking-widest bg-background border rounded-none leading-relaxed placeholder:text-muted-foreground/30"
-            />
-          </div>
-        ))}
+      <div className="p-8 space-y-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-10">
+          {reviewFields.map(({ key, label, icon: Icon, placeholder }) => (
+            <div key={key} className="space-y-3">
+              <Label className="text-[9px] font-bold uppercase tracking-[0.3em] flex items-center gap-3 text-muted-foreground/60">
+                <Icon className="w-3.5 h-3.5" />
+                {label}
+              </Label>
+              <Textarea
+                value={(week.review as any)?.[key] || ""}
+                onChange={(e) => {
+                  const newReview = { ...week.review, [key]: e.target.value }
+                  updateWeekReview(weekIndex, newReview as any)
+                }}
+                placeholder={placeholder}
+                className="min-h-[140px] resize-none text-[11px] font-bold uppercase tracking-widest bg-background border rounded-none leading-relaxed placeholder:text-muted-foreground/10 focus-visible:ring-primary/20"
+              />
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   )

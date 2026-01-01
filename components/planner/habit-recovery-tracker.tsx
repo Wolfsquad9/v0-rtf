@@ -1,13 +1,11 @@
 "use client"
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { getThemeColors } from "@/lib/themes"
 import { usePlanner } from "@/hooks/use-planner"
 import { Heart, Droplet, Moon, Apple, Brain, Dumbbell } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 interface HabitRecoveryTrackerProps {
   weekId: string
@@ -16,7 +14,6 @@ interface HabitRecoveryTrackerProps {
 
 export function HabitRecoveryTracker({ weekId, dayId }: HabitRecoveryTrackerProps) {
   const { state, updateDay } = usePlanner()
-  const theme = getThemeColors(state?.theme || "dark-knight")
 
   if (!state) return null
 
@@ -29,85 +26,84 @@ export function HabitRecoveryTracker({ weekId, dayId }: HabitRecoveryTrackerProp
   if (!day) return null
 
   const habits = [
-    { key: "water", label: "Hydration (2L+)", icon: Droplet },
-    { key: "sleep", label: "Quality Sleep (7h+)", icon: Moon },
-    { key: "nutrition", label: "Nutrition On Point", icon: Apple },
-    { key: "mobility", label: "Mobility Work", icon: Dumbbell },
-    { key: "mindfulness", label: "Mindfulness Practice", icon: Brain },
-    { key: "recovery", label: "Active Recovery", icon: Heart },
+    { key: "water", label: "Hydration // 2L+", icon: Droplet },
+    { key: "sleep", label: "Recovery // 7H+", icon: Moon },
+    { key: "nutrition", label: "Nutrition // Optimal", icon: Apple },
+    { key: "mobility", label: "Joint Health // Active", icon: Dumbbell },
+    { key: "mindfulness", label: "Neural State // Focused", icon: Brain },
+    { key: "recovery", label: "Active Protocol", icon: Heart },
   ]
 
   return (
-    <div className="border bg-card mt-6">
-      <div className="p-6 border-b flex flex-col gap-2">
-        <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
+    <div className="border bg-card mt-6 shadow-none">
+      <div className="p-8 border-b flex flex-col gap-2 bg-muted/10">
+        <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-primary flex items-center gap-3">
           <Heart className="w-3.5 h-3.5" />
-          Recovery Protocol
+          Operational Recovery Protocol
         </h3>
-        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
-          Optimal adaptation requires disciplined recovery
+        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/40">
+          Biological systems require disciplined adaptation windows
         </p>
       </div>
-      <div className="p-6 space-y-8">
-        {/* Habits Grid */}
+      <div className="p-8 space-y-10">
         <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
           {habits.map(({ key, label, icon: Icon }) => {
-            const checked = day.habits?.[key] || false
+            const habitsObj = day.habits as any
+            const checked = habitsObj?.[key] || false
             return (
               <div
                 key={key}
                 className={cn(
-                  "flex items-center space-x-3 p-4 border transition-colors cursor-pointer",
-                  checked ? "bg-primary/5 border-primary/30" : "hover:bg-muted/50"
+                  "flex items-center space-x-4 p-5 border transition-all cursor-pointer group",
+                  checked ? "bg-primary/5 border-primary/30" : "hover:bg-muted/50 border-border/60"
                 )}
                 onClick={() => {
-                  const newHabits = { ...day.habits, [key]: !checked }
-                  updateDay(weekIndex, dayIndex, { habits: newHabits })
+                  const newHabits = { ...(day.habits || {}), [key]: !checked }
+                  updateDay(weekIndex, dayIndex, { habits: newHabits as any })
                 }}
               >
-                <div className="flex-1 flex items-center gap-3">
-                  <Icon className={cn("w-4 h-4", checked ? "text-primary" : "text-muted-foreground/30")} />
-                  <span className={cn("text-[10px] font-bold uppercase tracking-widest", checked ? "text-foreground" : "text-muted-foreground/50")}>
+                <div className="flex-1 flex items-center gap-4">
+                  <Icon className={cn("w-4 h-4 transition-colors", checked ? "text-primary" : "text-muted-foreground/20 group-hover:text-muted-foreground/40")} />
+                  <span className={cn("text-[10px] font-bold uppercase tracking-widest transition-colors", checked ? "text-foreground" : "text-muted-foreground/40 group-hover:text-muted-foreground/60")}>
                     {label}
                   </span>
                 </div>
-                {checked && <div className="w-1.5 h-1.5 bg-primary" />}
+                {checked && <div className="w-1 h-1 bg-primary" />}
               </div>
             )
           })}
         </div>
 
-        {/* Recovery Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-8 border-t border-dashed">
           <div className="space-y-2">
-            <Label className="text-[9px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
-              Sleep Duration
+            <Label className="text-[9px] font-bold uppercase tracking-[0.2em] text-muted-foreground/60">
+              Sleep Quantity (H)
             </Label>
             <Input
               type="number"
               step="0.5"
               value={day.sleepHours || ""}
               onChange={(e) => updateDay(weekIndex, dayIndex, { sleepHours: Number(e.target.value) })}
-              className="h-10 text-center text-xs font-bold bg-background border rounded-none"
+              className="h-11 text-center text-xs font-bold bg-background border rounded-none focus-visible:ring-primary/10"
               placeholder="0.0"
             />
           </div>
           <div className="space-y-2">
-            <Label className="text-[9px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
-              Hydration (L)
+            <Label className="text-[9px] font-bold uppercase tracking-[0.2em] text-muted-foreground/60">
+              Hydration Vol (L)
             </Label>
             <Input
               type="number"
               step="0.5"
               value={day.waterIntake || ""}
               onChange={(e) => updateDay(weekIndex, dayIndex, { waterIntake: Number(e.target.value) })}
-              className="h-10 text-center text-xs font-bold bg-background border rounded-none"
+              className="h-11 text-center text-xs font-bold bg-background border rounded-none focus-visible:ring-primary/10"
               placeholder="0.0"
             />
           </div>
           <div className="space-y-2">
-            <Label className="text-[9px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
-              Stress (1-10)
+            <Label className="text-[9px] font-bold uppercase tracking-[0.2em] text-muted-foreground/60">
+              Neural Load (1-10)
             </Label>
             <Input
               type="number"
@@ -115,22 +111,21 @@ export function HabitRecoveryTracker({ weekId, dayId }: HabitRecoveryTrackerProp
               max="10"
               value={day.stressLevel || ""}
               onChange={(e) => updateDay(weekIndex, dayIndex, { stressLevel: Number(e.target.value) })}
-              className="h-10 text-center text-xs font-bold bg-background border rounded-none"
+              className="h-11 text-center text-xs font-bold bg-background border rounded-none focus-visible:ring-primary/10"
               placeholder="5"
             />
           </div>
         </div>
 
-        {/* Recovery Notes */}
-        <div className="space-y-2 pt-6 border-t">
-          <Label className="text-[9px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
-            Protocol Notes
+        <div className="space-y-2 pt-8 border-t border-dashed">
+          <Label className="text-[9px] font-bold uppercase tracking-[0.2em] text-muted-foreground/60">
+            Wellness Log // Recovery Dynamics
           </Label>
           <Textarea
             value={day.recoveryNotes || ""}
             onChange={(e) => updateDay(weekIndex, dayIndex, { recoveryNotes: e.target.value })}
-            placeholder="Document recovery state and wellness metrics..."
-            className="min-h-[80px] resize-none text-[10px] font-bold uppercase tracking-widest bg-background border rounded-none leading-relaxed"
+            placeholder="DOCUMENT PHYSIOLOGICAL FEEDBACK AND RECOVERY STATUS..."
+            className="min-h-[100px] resize-none text-[10px] font-bold uppercase tracking-widest bg-background border rounded-none leading-relaxed placeholder:text-muted-foreground/10"
           />
         </div>
       </div>

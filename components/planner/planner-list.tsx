@@ -13,7 +13,6 @@ import { RPECalculator } from "./rpe-calculator"
 import { VisionBoard } from "./vision-board"
 import { ProgressPhotos } from "./progress-photos"
 import { WeeklyReview } from "./weekly-review"
-import { getThemeColors } from "@/lib/themes"
 
 type ListItem =
   | { type: "command-center" }
@@ -30,7 +29,6 @@ type ListItem =
 export function PlannerList() {
   const { state, isLoading } = usePlanner()
   const listRef = useRef<HTMLDivElement>(null)
-  const theme = state ? getThemeColors(state.theme) : getThemeColors("dark-knight")
 
   const items = useMemo(() => {
     const list: ListItem[] = [
@@ -77,14 +75,14 @@ export function PlannerList() {
 
   if (isLoading || !state || !state.weeks) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-muted-foreground font-mono animate-pulse">Loading planner...</div>
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <div className="text-[10px] font-bold uppercase tracking-[0.5em] text-muted-foreground animate-pulse">Initializing Transformation Protocol...</div>
       </div>
     )
   }
 
   return (
-    <div ref={listRef} className="max-w-5xl mx-auto px-4 pb-20" id="planner-content">
+    <div ref={listRef} className="max-w-5xl mx-auto px-4 pb-32" id="planner-content">
       <div
         style={{
           height: `${virtualizer.getTotalSize()}px`,
@@ -101,7 +99,7 @@ export function PlannerList() {
 
           return (
             <div
-              key={virtualItem.key}
+              key={String(virtualItem.key)}
               style={{
                 position: "absolute",
                 top: 0,
@@ -111,11 +109,10 @@ export function PlannerList() {
                 transform: `translateY(${virtualItem.start}px)`,
               }}
             >
-              {/* Visual divider before major sections */}
               {isDividerNeeded && (
-                <div className="my-10 h-px bg-border max-w-xs mx-auto opacity-50" />
+                <div className="my-20 h-px bg-border max-w-xs mx-auto opacity-30" />
               )}
-              <div className="pb-8">
+              <div className="pb-12">
                 {item.type === "command-center" && <CommandCenter />}
                 {item.type === "theme-switcher" && <ThemeSwitcher />}
                 {item.type === "metrics" && <CoreMetrics />}

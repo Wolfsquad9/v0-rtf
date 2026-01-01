@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { analyzeWorkout } from "@/hooks/use-ai-coach-engine";
+import { Gauge } from "lucide-react";
 
 interface AICoachPanelProps {
   dayData: any;
@@ -22,7 +23,6 @@ export const AICoachPanel = ({ dayData, apiKey }: AICoachPanelProps) => {
   const [loading, setLoading] = useState(false);
   const prevSig = useRef("");
 
-  // Extract meaningful data
   const exercises = (dayData?.training || []).filter((ex: any) =>
     ex.name ||
     ex.notes ||
@@ -33,7 +33,6 @@ export const AICoachPanel = ({ dayData, apiKey }: AICoachPanelProps) => {
   const signature = JSON.stringify(exercises);
 
   useEffect(() => {
-    // Hide if no data
     if (exercises.length === 0) {
       setAnalysis(null);
       prevSig.current = "";
@@ -41,7 +40,6 @@ export const AICoachPanel = ({ dayData, apiKey }: AICoachPanelProps) => {
       return;
     }
 
-    // Skip if same signature
     if (signature === prevSig.current) return;
     if (loading) return;
 
@@ -55,57 +53,86 @@ export const AICoachPanel = ({ dayData, apiKey }: AICoachPanelProps) => {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [signature, apiKey, exercises.length]);
+  }, [signature, apiKey, exercises.length, dayData, loading]);
 
   if (exercises.length === 0) return null;
 
   return (
-    <div className="border rounded-xl p-4 bg-card shadow-sm space-y-3">
-      <h2 className="text-lg font-semibold">AI Coach</h2>
+    <div className="border bg-card p-8 shadow-none mt-0.5 space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-[10px] font-bold uppercase tracking-[0.3em] text-primary flex items-center gap-3">
+          <Gauge className="w-3.5 h-3.5" />
+          Neural Intelligence Report
+        </h2>
+        {analysis?.demoMode && (
+          <span className="text-[8px] font-bold px-2 py-0.5 border border-border bg-muted/30 uppercase tracking-widest text-muted-foreground/40">
+            Simulated Node
+          </span>
+        )}
+      </div>
 
       {loading && (
-        <p className="text-muted-foreground">Analyzing your session…</p>
+        <div className="flex items-center gap-4 py-4">
+          <div className="w-1 h-1 bg-primary animate-ping" />
+          <p className="text-[9px] font-bold uppercase tracking-[0.4em] text-muted-foreground/60 italic">Synthesizing Bio-Feedback...</p>
+        </div>
       )}
 
       {!loading && analysis ? (
-        <div className="space-y-2">
-          {analysis.strengthTrend && typeof analysis.strengthTrend === "string" && (
-            <p>
-              <strong>Strength Trend:</strong> {analysis.strengthTrend}
-            </p>
-          )}
-          {analysis.recoveryStatus && typeof analysis.recoveryStatus === "string" && (
-            <p>
-              <strong>Recovery:</strong> {analysis.recoveryStatus}
-            </p>
-          )}
+        <div className="space-y-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+            {analysis.strengthTrend && typeof analysis.strengthTrend === "string" && (
+              <div className="space-y-2">
+                <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-muted-foreground/40">Load Adaptation Velocity</p>
+                <p className="text-[11px] font-bold uppercase tracking-widest leading-relaxed border-l-2 border-primary/20 pl-4">{analysis.strengthTrend}</p>
+              </div>
+            )}
+            {analysis.recoveryStatus && typeof analysis.recoveryStatus === "string" && (
+              <div className="space-y-2">
+                <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-muted-foreground/40">Systemic Recovery State</p>
+                <p className="text-[11px] font-bold uppercase tracking-widest leading-relaxed border-l-2 border-primary/20 pl-4">{analysis.recoveryStatus}</p>
+              </div>
+            )}
+          </div>
 
-          {Array.isArray(analysis.techniqueFlags) && analysis.techniqueFlags.length > 0 && (
-            <ul className="text-sm list-disc ml-4">
-              {analysis.techniqueFlags.map((t: any) => {
-                if (typeof t === "string") return <li key={t}>{t}</li>;
-                return null;
-              })}
-            </ul>
-          )}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 pt-8 border-t border-dashed">
+            {Array.isArray(analysis.techniqueFlags) && analysis.techniqueFlags.length > 0 && (
+              <div className="space-y-4">
+                <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-muted-foreground/40">Mechanical Warnings</p>
+                <ul className="space-y-3">
+                  {analysis.techniqueFlags.map((t: any) => {
+                    if (typeof t === "string") return (
+                      <li key={t} className="text-[10px] font-bold uppercase tracking-widest flex items-start gap-3">
+                        <span className="mt-1.5 w-1 h-1 bg-primary flex-shrink-0" />
+                        <span className="leading-relaxed">{t}</span>
+                      </li>
+                    );
+                    return null;
+                  })}
+                </ul>
+              </div>
+            )}
 
-          {Array.isArray(analysis.recommendedChanges) && analysis.recommendedChanges.length > 0 && (
-            <ul className="text-sm list-disc ml-4">
-              {analysis.recommendedChanges.map((c: any) => {
-                if (typeof c === "string") return <li key={c}>{c}</li>;
-                return null;
-              })}
-            </ul>
-          )}
-
-          {analysis.demoMode === true && (
-            <p className="text-xs text-muted-foreground mt-2">
-              Running in demo mode — add a real API key to unlock full analysis.
-            </p>
-          )}
+            {Array.isArray(analysis.recommendedChanges) && analysis.recommendedChanges.length > 0 && (
+              <div className="space-y-4">
+                <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-muted-foreground/40">Strategic Protocol Delta</p>
+                <ul className="space-y-3">
+                  {analysis.recommendedChanges.map((c: any) => {
+                    if (typeof c === "string") return (
+                      <li key={c} className="text-[10px] font-bold uppercase tracking-widest flex items-start gap-3">
+                        <span className="mt-1.5 w-1 h-1 bg-primary/40 flex-shrink-0" />
+                        <span className="leading-relaxed">{c}</span>
+                      </li>
+                    );
+                    return null;
+                  })}
+                </ul>
+              </div>
+            )}
+          </div>
         </div>
       ) : !loading && (
-        <p className="text-muted-foreground text-sm">Ready to analyze your workout data.</p>
+        <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-muted-foreground/20 italic py-4">Awaiting bio-data stream for session synthesis.</p>
       )}
     </div>
   );
