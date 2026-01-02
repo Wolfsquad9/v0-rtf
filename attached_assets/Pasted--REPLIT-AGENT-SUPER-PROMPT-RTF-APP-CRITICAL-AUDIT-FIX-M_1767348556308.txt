@@ -1,0 +1,237 @@
+# REPLIT AGENT SUPER PROMPT — RTF APP CRITICAL AUDIT & FIX
+
+## MISSION OBJECTIVE
+You are a Senior Full-Stack Engineer specializing in Next.js/React/Supabase/Tailwind. Your mission is to audit the "Return to Form" fitness planner app, identify critical architectural weaknesses, and implement high-ROI fixes with zero tolerance for half-measures.
+
+---
+
+## EXECUTION PROTOCOL
+
+### PHASE 1: BRUTAL AUDIT (MANDATORY FIRST STEP)
+
+Before making ANY changes, perform a complete diagnostic:
+
+1. **Scan the entire codebase** and identify:
+   - Authentication/security vulnerabilities
+   - Performance bottlenecks
+   - Race conditions in state management
+   - Missing error boundaries
+   - Input validation gaps
+   - Rate limiting weaknesses
+   - UI/UX pain points
+
+2. **Output a diagnostic table** in this exact format:
+
+```
+| Weakness | Fix Required | Impact (1-10) | File(s) Affected |
+|----------|--------------|---------------|------------------|
+| ... | ... | ... | ... |
+```
+
+3. **Prioritize fixes** by impact score (10 = critical, 1 = minor)
+
+4. **Wait for confirmation** before proceeding to fixes
+
+---
+
+### PHASE 2: IMPLEMENT CRITICAL FIXES
+
+Execute fixes in order of priority (highest impact first). For each fix:
+
+#### FIX TEMPLATE
+```
+## FIX [N]: [Brief Description]
+**Impact**: [1-10]
+**Files Modified**: [list]
+**Problem**: [1-2 sentence explanation]
+**Solution**: [1-2 sentence explanation]
+
+[Complete updated code for affected files]
+```
+
+---
+
+## KNOWN CRITICAL ISSUES (START HERE)
+
+### ISSUE 1: Race Conditions in State Management
+**File**: `hooks/use-planner.tsx`
+**Problem**: `useEffect` saves state on every update, causing multiple simultaneous writes to localStorage and Supabase
+**Fix Required**: Implement debounced save with 1000ms delay
+
+### ISSUE 2: No Input Validation
+**File**: `components/planner/daily-log.tsx`
+**Problem**: Users can enter negative numbers, values > 10000kg, or 1000 sets
+**Fix Required**: Add validation to `handleNumericInput` that clamps values:
+- Sets/Reps: 0-100
+- LoadKg: 0-10000
+- Reject NaN values
+
+### ISSUE 3: Missing Loading States for AI
+**File**: `components/planner/ai-coach-panel.tsx`
+**Problem**: No visual feedback while AI analyzes workout
+**Fix Required**: Add skeleton loader animation during `loading === true`
+
+### ISSUE 4: No Authentication/RLS
+**Files**: `app/api/db/*.ts`, `lib/supabase.ts`
+**Problem**: No user authentication, userId is generated client-side, no Row Level Security
+**Fix Required**: 
+- Implement Supabase Auth
+- Add RLS policies to `planner_state` table
+- Replace fake userId with real auth
+
+### ISSUE 5: In-Memory Rate Limiting
+**File**: `lib/api-security.ts`
+**Problem**: Rate limit state lost on server restart
+**Fix Required**: Move to Supabase table or Redis
+
+### ISSUE 6: Virtual List Re-renders
+**File**: `components/planner/planner-list.tsx`
+**Problem**: List items not memoized, causing excessive re-renders
+**Fix Required**: Wrap components in `React.memo` and use `useMemo` for items array
+
+### ISSUE 7: Theme Causes Full Re-render
+**File**: `lib/themes.ts`, `components/planner/theme-switcher.tsx`
+**Problem**: Theme colors hardcoded; changing theme re-renders entire app
+**Fix Required**: Use CSS custom properties and update root styles dynamically
+
+### ISSUE 8: PDF Export Blocks UI
+**File**: `lib/export-pdf.ts`
+**Problem**: `html2canvas` blocks main thread for large plans
+**Fix Required**: Move to Web Worker or add non-blocking queue
+
+---
+
+## CODE QUALITY STANDARDS
+
+### Must Follow:
+- **TypeScript**: Strict types, no `any` unless absolutely necessary
+- **React**: Use hooks correctly, avoid unnecessary re-renders
+- **Performance**: Memoize expensive computations, debounce rapid updates
+- **Error Handling**: Try-catch all async operations, user-friendly error messages
+- **Validation**: Validate ALL user inputs at entry point
+- **Security**: Never trust client input, sanitize everything
+
+### Code Style:
+- Use existing patterns in the codebase
+- Maintain the "tactical military" design language
+- Keep functions under 50 lines
+- One responsibility per function
+- Add comments only for complex logic
+
+---
+
+## IMPLEMENTATION ORDER (STRICT)
+
+1. **Input Validation** (Daily Log) — prevents data corruption
+2. **Debounced State Save** (use-planner) — prevents race conditions  
+3. **AI Loading States** (ai-coach-panel) — improves UX
+4. **Memoization** (planner-list) — performance boost
+5. **Error Boundaries** (wrap critical components) — stability
+6. **Authentication** (Supabase Auth + RLS) — security
+7. **Rate Limit Persistence** (move to DB) — production-ready
+8. **PDF Export Optimization** (Web Worker) — nice-to-have
+
+---
+
+## TESTING CHECKLIST (AFTER EACH FIX)
+
+After implementing each fix, verify:
+
+- [ ] App compiles without errors
+- [ ] No TypeScript errors
+- [ ] No console errors in browser
+- [ ] Feature still works as intended
+- [ ] Performance improved (if applicable)
+- [ ] No regressions in other features
+
+---
+
+## DELIVERABLE FORMAT
+
+For each fix you implement, respond with:
+
+```
+✅ FIX [N] COMPLETE: [Name]
+
+**Changes Made**:
+- [file1.ts]: [brief description]
+- [file2.tsx]: [brief description]
+
+**Testing Notes**:
+- [what was tested]
+- [expected behavior]
+- [actual result]
+
+**Next Fix**: [name of next fix or "All fixes complete"]
+```
+
+---
+
+## CRITICAL RULES
+
+1. **NEVER skip the audit phase** — always diagnose before fixing
+2. **ONE fix at a time** — implement, test, confirm, then move to next
+3. **NO placeholders** — every code block must be complete and production-ready
+4. **ASK if uncertain** — if you need clarification, request it immediately
+5. **PRESERVE functionality** — fixes must not break existing features
+6. **FOLLOW the codebase style** — match existing patterns and conventions
+
+---
+
+## START COMMAND
+
+When ready, begin with:
+
+**"Starting Phase 1: Complete Audit of RTF App..."**
+
+Then output the diagnostic table and wait for approval to proceed with fixes.
+
+---
+
+## ANTI-PATTERNS TO AVOID
+
+❌ Making changes without understanding the full system
+❌ Introducing new dependencies without justification  
+❌ Breaking existing functionality to add new features
+❌ Copying code without understanding it
+❌ Skipping error handling "for now"
+❌ Adding TODO comments instead of completing the work
+❌ Ignoring TypeScript errors
+❌ Making "quick fixes" that create technical debt
+
+---
+
+## SUCCESS CRITERIA
+
+You will have succeeded when:
+
+1. ✅ All critical issues (Impact 8-10) are resolved
+2. ✅ App has zero console errors
+3. ✅ State saves reliably without race conditions
+4. ✅ All user inputs are validated
+5. ✅ Loading states provide clear feedback
+6. ✅ Performance is noticeably improved
+7. ✅ Code follows existing patterns and conventions
+8. ✅ No regressions in existing functionality
+
+---
+
+## EMERGENCY STOP
+
+If at ANY point you encounter:
+- Breaking changes you can't resolve
+- Missing dependencies or configuration
+- Conflicts with existing code you don't understand
+
+**STOP IMMEDIATELY** and report the blocker with:
+- What you were attempting
+- What went wrong
+- What information you need to proceed
+
+---
+
+## BEGIN EXECUTION
+
+Read the entire codebase, perform the audit, and output your findings.
+
+**DO NOT proceed to fixes until the audit is complete and confirmed.**

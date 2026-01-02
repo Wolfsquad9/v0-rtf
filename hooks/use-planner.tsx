@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react"
+import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from "react"
 import type { PlannerState, Week, DayEntry, ThemeName, VisionBoardItem, ProgressPhoto } from "@/types/planner"
 import { loadState, saveState, clearState, loadStateFromDatabase } from "@/lib/storage"
 import { addDays, startOfWeek } from "date-fns"
@@ -82,6 +82,7 @@ const PlannerContext = createContext<PlannerContextType | undefined>(undefined)
 export const PlannerProvider = ({ children }: { children: ReactNode }) => {
   const [state, setState] = useState<PlannerState | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     const initializeState = async () => {
@@ -106,7 +107,17 @@ export const PlannerProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     if (state && !isLoading) {
-      saveState(state)
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current)
+      }
+      saveTimeoutRef.current = setTimeout(() => {
+        saveState(state)
+      }, 1000)
+    }
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current)
+      }
     }
   }, [state, isLoading])
 

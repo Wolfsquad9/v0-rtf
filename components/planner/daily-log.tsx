@@ -85,7 +85,12 @@ export const DailyLog = memo(function DailyLog({ weekId, dayId }: DailyLogProps)
                       <Input
                         type="number"
                         value={ex.sets || ""}
-                        onChange={(e) => updateExercise(weekIndex, dayIndex, idx, "sets", Number(e.target.value))}
+                        onChange={(e) => {
+                          const val = Number(e.target.value)
+                          if (!isNaN(val)) {
+                            updateExercise(weekIndex, dayIndex, idx, "sets", Math.min(Math.max(val, 0), 100))
+                          }
+                        }}
                         className="h-11 text-center text-xs font-bold bg-background/50 border rounded-none"
                       />
                     </div>
@@ -93,7 +98,12 @@ export const DailyLog = memo(function DailyLog({ weekId, dayId }: DailyLogProps)
                       <Input
                         type="number"
                         value={ex.reps || ""}
-                        onChange={(e) => updateExercise(weekIndex, dayIndex, idx, "reps", Number(e.target.value))}
+                        onChange={(e) => {
+                          const val = Number(e.target.value)
+                          if (!isNaN(val)) {
+                            updateExercise(weekIndex, dayIndex, idx, "reps", Math.min(Math.max(val, 0), 100))
+                          }
+                        }}
                         className="h-11 text-center text-xs font-bold bg-background/50 border rounded-none"
                       />
                     </div>
@@ -101,7 +111,12 @@ export const DailyLog = memo(function DailyLog({ weekId, dayId }: DailyLogProps)
                       <Input
                         type="number"
                         value={ex.loadKg || ""}
-                        onChange={(e) => updateExercise(weekIndex, dayIndex, idx, "loadKg", Number(e.target.value))}
+                        onChange={(e) => {
+                          const val = Number(e.target.value)
+                          if (!isNaN(val)) {
+                            updateExercise(weekIndex, dayIndex, idx, "loadKg", Math.min(Math.max(val, 0), 10000))
+                          }
+                        }}
                         className="h-11 text-center text-xs font-bold bg-background/50 border-primary/20 rounded-none text-primary focus-visible:ring-primary/20 transition-all"
                         placeholder="0.0"
                       />

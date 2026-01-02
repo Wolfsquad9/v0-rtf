@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useRef } from "react"
+import { useMemo, useRef, memo } from "react"
 import { useWindowVirtualizer } from "@tanstack/react-virtual"
 import { usePlanner } from "@/hooks/use-planner"
 import { DailyLog } from "./daily-log"
@@ -13,6 +13,17 @@ import { RPECalculator } from "./rpe-calculator"
 import { VisionBoard } from "./vision-board"
 import { ProgressPhotos } from "./progress-photos"
 import { WeeklyReview } from "./weekly-review"
+
+// Memoize section components
+const MemoizedCommandCenter = memo(CommandCenter)
+const MemoizedThemeSwitcher = memo(ThemeSwitcher)
+const MemoizedCoreMetrics = memo(CoreMetrics)
+const MemoizedVisionBoard = memo(VisionBoard)
+const MemoizedProgressPhotos = memo(ProgressPhotos)
+const MemoizedRPEScaleGuide = memo(RPEScaleGuide)
+const MemoizedRPECalculator = memo(RPECalculator)
+const MemoizedWeekHeader = memo(WeekHeader)
+const MemoizedWeeklyReview = memo(WeeklyReview)
 
 type ListItem =
   | { type: "command-center" }
@@ -113,16 +124,16 @@ export function PlannerList() {
                 <div className="my-20 h-px bg-border max-w-xs mx-auto opacity-30" />
               )}
               <div className="pb-12">
-                {item.type === "command-center" && <CommandCenter />}
-                {item.type === "theme-switcher" && <ThemeSwitcher />}
-                {item.type === "metrics" && <CoreMetrics />}
-                {item.type === "vision-board" && <VisionBoard />}
-                {item.type === "progress-photos" && <ProgressPhotos />}
-                {item.type === "rpe-guide" && <RPEScaleGuide />}
-                {item.type === "rpe-calculator" && <RPECalculator />}
-                {item.type === "week-header" && <WeekHeader weekId={item.weekId} />}
+                {item.type === "command-center" && <MemoizedCommandCenter />}
+                {item.type === "theme-switcher" && <MemoizedThemeSwitcher />}
+                {item.type === "metrics" && <MemoizedCoreMetrics />}
+                {item.type === "vision-board" && <MemoizedVisionBoard />}
+                {item.type === "progress-photos" && <MemoizedProgressPhotos />}
+                {item.type === "rpe-guide" && <MemoizedRPEScaleGuide />}
+                {item.type === "rpe-calculator" && <MemoizedRPECalculator />}
+                {item.type === "week-header" && <MemoizedWeekHeader weekId={item.weekId} />}
                 {item.type === "day" && <DailyLog dayId={item.dayId} weekId={item.weekId} />}
-                {item.type === "week-review" && <WeeklyReview weekId={item.weekId} />}
+                {item.type === "week-review" && <MemoizedWeeklyReview weekId={item.weekId} />}
               </div>
             </div>
           )

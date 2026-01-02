@@ -72,9 +72,33 @@ export const AICoachPanel = ({ dayData, apiKey }: AICoachPanelProps) => {
       </div>
 
       {loading && (
-        <div className="flex items-center gap-4 py-4">
-          <div className="w-1 h-1 bg-primary animate-ping" />
-          <p className="text-[9px] font-bold uppercase tracking-[0.4em] text-muted-foreground/60 italic">Synthesizing Bio-Feedback...</p>
+        <div className="space-y-6 py-4 animate-pulse">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+            <div className="space-y-3">
+              <div className="h-2 w-24 bg-primary/10 rounded-none" />
+              <div className="h-10 w-full bg-primary/5 rounded-none border-l-2 border-primary/20" />
+            </div>
+            <div className="space-y-3">
+              <div className="h-2 w-24 bg-primary/10 rounded-none" />
+              <div className="h-10 w-full bg-primary/5 rounded-none border-l-2 border-primary/20" />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 pt-8 border-t border-dashed border-primary/10">
+            <div className="space-y-4">
+              <div className="h-2 w-32 bg-primary/10 rounded-none" />
+              <div className="space-y-2">
+                <div className="h-4 w-full bg-primary/5 rounded-none" />
+                <div className="h-4 w-3/4 bg-primary/5 rounded-none" />
+              </div>
+            </div>
+            <div className="space-y-4">
+              <div className="h-2 w-32 bg-primary/10 rounded-none" />
+              <div className="space-y-2">
+                <div className="h-4 w-full bg-primary/5 rounded-none" />
+                <div className="h-4 w-3/4 bg-primary/5 rounded-none" />
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
