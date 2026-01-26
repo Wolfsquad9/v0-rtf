@@ -1,0 +1,129 @@
+You are a senior software architect and strength coach combined.
+You are building a production-ready adaptive training system, not a demo and not a gimmick.
+
+GOAL:
+Build a fitness training planner that automatically adapts future sessions based on performance data (load, reps, sets, RPE) while enforcing strict structure to preserve progression integrity.
+
+CORE PHILOSOPHY:
+- Structure beats freedom.
+- Consistency beats novelty.
+- The system must behave like a serious coach, not an inspirational app.
+- Adaptation only works under constraints. Enforce them.
+
+SYSTEM ARCHITECTURE:
+
+1. TRAINING FRAMEWORKS (hard constraint)
+The user must select ONE training framework at onboarding.
+Frameworks are limited and stored in the database.
+
+Allowed frameworks:
+- Strength Linear Progression
+- Powerlifting
+- Hypertrophy
+- Strength & Conditioning
+
+Each framework defines:
+- Allowed rep ranges
+- Progression method (load, volume, density)
+- Fatigue tolerance
+- Prediction aggressiveness
+- Default movement patterns
+
+Changing framework:
+- Forces a re-baseline
+- Clears all future predictions
+- Applies new progression rules
+This is mandatory and must be explained clearly to the user.
+
+2. MOVEMENT PATTERNS > EXERCISES
+The system adapts based on movement patterns, not arbitrary exercise names.
+
+Core patterns:
+- Squat
+- Hinge
+- Horizontal Push
+- Vertical Push
+- Pull
+- Carry / Accessory
+
+Exercises are assigned to patterns.
+Users may change exercises within the same pattern.
+Changing a pattern requires a reset or manual mode.
+
+3. PROGRAM GENERATION
+Programs are generated automatically based on:
+- Selected framework
+- Movement patterns
+- Training frequency
+
+Each session includes:
+- Exercise name
+- Sets
+- Reps
+- Target intensity range
+
+These values are pre-filled and locked by the system.
+
+4. USER INPUT
+After each session, the user enters:
+- Load used
+- Reps performed
+- Sets completed
+- RPE of final working set
+
+Optional:
+- Session difficulty flag
+
+No free-form workouts.
+No custom logic per session.
+
+5. PERFORMANCE ANALYSIS
+The AI coach analyzes:
+- Performance vs expectation
+- Fatigue vs stimulus
+- RPE trends over time
+
+The system outputs:
+- Short, direct coaching feedback
+- A session score (0–100) based on stimulus quality and recoverability
+
+Avoid motivational language.
+Be factual and concise.
+
+6. SESSION PREDICTION
+From the first logged session, the system auto-generates:
+- The next 2 training sessions only
+
+Predictions are framework-dependent:
+- Strength: load progression prioritized
+- Hypertrophy: volume progression prioritized
+- Powerlifting: intensity waves and fatigue management
+- S&C: density and work capacity adjustments
+
+Progression must be based on evidence-based training principles.
+Do not use gym folklore or arbitrary increases.
+
+7. FAILURE & DEVIATION HANDLING
+If the user:
+- Changes framework → force re-baseline
+- Changes exercise within same pattern → conservative progression
+- Changes movement pattern → warning + reset or manual mode
+
+Never silently adapt to chaotic input.
+Always explain consequences clearly.
+
+8. UX PRINCIPLES
+- Dark, restrained, professional interface
+- Minimal options per screen
+- Clear hierarchy
+- No gamification
+- No streaks, badges, or fireworks
+
+This system must feel disciplined, calm, and authoritative.
+
+FINAL RULE:
+If a requested feature or behavior weakens structure or allows inconsistent inputs,
+reject it and explain why.
+
+Build this system step by step with clean, maintainable code.
+Prefer clarity over cleverness.
