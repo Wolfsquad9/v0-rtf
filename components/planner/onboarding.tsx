@@ -3,33 +3,33 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import type { TrainingFrameworkId } from "@/types/planner"
+import type { TrainingFramework } from "@/types/planner"
 import { Shield, Zap, Target, Activity } from "lucide-react"
 
 const FRAMEWORKS = [
   {
-    id: "strength-lp",
+    id: "STRENGTH_LINEAR",
     name: "Strength Linear Progression",
     description: "Prioritize consistent load increases. Ideal for rapid strength development.",
     icon: Activity,
     rules: "Progression: Load focus. Fatigue: Moderate. Aggressiveness: High.",
   },
   {
-    id: "powerlifting",
+    id: "POWERLIFTING",
     name: "Powerlifting",
     description: "Intensity waves and peaking protocols. Focused on 1RM performance.",
     icon: Target,
     rules: "Progression: Intensity waves. Fatigue: Managed. Aggressiveness: Calculated.",
   },
   {
-    id: "hypertrophy",
+    id: "HYPERTROPHY",
     name: "Hypertrophy",
     description: "Prioritize volume accumulation and density. Ideal for muscular adaptation.",
     icon: Zap,
     rules: "Progression: Volume focus. Fatigue: High tolerance. Aggressiveness: Moderate.",
   },
   {
-    id: "sc",
+    id: "STRENGTH_CONDITIONING",
     name: "Strength & Conditioning",
     description: "Density and work capacity adjustments. Versatile performance protocol.",
     icon: Shield,
@@ -38,11 +38,11 @@ const FRAMEWORKS = [
 ]
 
 interface OnboardingProps {
-  onSelect: (frameworkId: TrainingFrameworkId) => void
+  onSelect: (frameworkId: TrainingFramework) => void
 }
 
 export function Onboarding({ onSelect }: OnboardingProps) {
-  const [selected, setSelected] = useState<TrainingFrameworkId | null>(null)
+  const [selected, setSelected] = useState<TrainingFramework | null>(null)
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6">
@@ -64,7 +64,7 @@ export function Onboarding({ onSelect }: OnboardingProps) {
                 className={`cursor-pointer transition-all border-2 rounded-none ${
                   isActive ? "border-primary bg-primary/5" : "border-border/40 hover:border-border"
                 }`}
-                onClick={() => setSelected(f.id as TrainingFrameworkId)}
+                onClick={() => setSelected(f.id as TrainingFramework)}
               >
                 <CardHeader className="pb-4">
                   <div className="flex items-center gap-4">

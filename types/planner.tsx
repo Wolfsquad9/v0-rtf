@@ -43,6 +43,9 @@ export interface DayEntry {
     nutrition: boolean
     hydration: boolean
     mobility: boolean
+    water: boolean
+    mindfulness: boolean
+    recovery: boolean
   }
   sleepHours?: number
   waterIntake?: number
@@ -50,6 +53,7 @@ export interface DayEntry {
   difficultyFlag?: "easy" | "moderate" | "hard"
   sessionScore?: number
   coachingFeedback?: string
+  recoveryNotes?: string
 }
 
 export interface Week {

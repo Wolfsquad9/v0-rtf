@@ -45,8 +45,8 @@ export function HabitRecoveryTracker({ weekId, dayId }: HabitRecoveryTrackerProp
           Biological systems require disciplined adaptation windows
         </p>
       </div>
-      <div className="p-8 space-y-10">
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+      <div className="p-4 md:p-8 space-y-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
           {habits.map(({ key, label, icon: Icon }) => {
             const habitsObj = day.habits as any
             const checked = habitsObj?.[key] || false
@@ -54,7 +54,7 @@ export function HabitRecoveryTracker({ weekId, dayId }: HabitRecoveryTrackerProp
               <div
                 key={key}
                 className={cn(
-                  "flex items-center space-x-4 p-5 border transition-all cursor-pointer group",
+                  "flex items-center space-x-4 p-4 md:p-5 border transition-all cursor-pointer group",
                   checked ? "bg-primary/5 border-primary/30" : "hover:bg-muted/50 border-border/60"
                 )}
                 onClick={() => {
@@ -64,7 +64,7 @@ export function HabitRecoveryTracker({ weekId, dayId }: HabitRecoveryTrackerProp
               >
                 <div className="flex-1 flex items-center gap-4">
                   <Icon className={cn("w-4 h-4 transition-colors", checked ? "text-primary" : "text-muted-foreground/20 group-hover:text-muted-foreground/40")} />
-                  <span className={cn("text-[10px] font-bold uppercase tracking-widest transition-colors", checked ? "text-foreground" : "text-muted-foreground/40 group-hover:text-muted-foreground/60")}>
+                  <span className={cn("text-[9px] md:text-[10px] font-bold uppercase tracking-widest transition-colors leading-tight", checked ? "text-foreground" : "text-muted-foreground/40 group-hover:text-muted-foreground/60")}>
                     {label}
                   </span>
                 </div>
@@ -74,7 +74,7 @@ export function HabitRecoveryTracker({ weekId, dayId }: HabitRecoveryTrackerProp
           })}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-8 border-t border-dashed">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 md:gap-8 pt-8 border-t border-dashed">
           <div className="space-y-2">
             <Label className="text-[9px] font-bold uppercase tracking-[0.2em] text-muted-foreground/60">
               Sleep Quantity (H)

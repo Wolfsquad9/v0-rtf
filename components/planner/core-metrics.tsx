@@ -27,7 +27,7 @@ export function CoreMetrics() {
         <h2 className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground">Biometric Tracking Profile</h2>
         <div className="h-px flex-1 mx-6 bg-border opacity-50" />
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-6">
         {metricFields.map((field) => (
           <div key={field.id} className="space-y-2">
             <Label

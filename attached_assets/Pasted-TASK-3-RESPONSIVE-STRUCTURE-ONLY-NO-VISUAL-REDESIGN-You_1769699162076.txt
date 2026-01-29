@@ -1,0 +1,146 @@
+TASK 3 — RESPONSIVE STRUCTURE ONLY (NO VISUAL REDESIGN)
+
+You are a senior front-end engineer working on a production web app.
+
+The UI aesthetic is already approved.
+You are NOT allowed to redesign anything.
+
+GOAL
+
+Make the existing application fully responsive and layout-safe across:
+
+Mobile (≤ 640px)
+
+Tablet (641–1024px)
+
+Desktop (≥ 1025px)
+
+WITHOUT changing:
+
+colors
+
+typography
+
+component visuals
+
+spacing scale
+
+copy
+
+business logic
+
+planner behavior
+
+SCOPE (STRICT)
+
+You may ONLY:
+
+Fix layout breakage
+
+Add responsive containers
+
+Add breakpoints
+
+Adjust grid / flex behavior
+
+Prevent overflow, clipping, or horizontal scroll
+
+Stack elements vertically on small screens when necessary
+
+You may NOT:
+
+introduce new UI components
+
+change hierarchy
+
+hide functionality
+
+simplify features
+
+add mobile-only UX logic
+
+This is structural responsiveness, not UX redesign.
+
+CONCRETE REQUIREMENTS
+Layout
+
+Replace rigid widths with responsive containers
+
+Use max-widths instead of fixed widths
+
+Ensure main content never exceeds viewport width
+
+Ensure cards wrap instead of overflow
+
+Grids & Flex
+
+Desktop: preserve existing multi-column layouts
+
+Tablet: reduce columns conservatively
+
+Mobile: single-column stacking, in logical order
+
+Forms & Panels
+
+Inputs must be usable on mobile
+
+Panels must stack vertically on small screens
+
+No side-by-side panels below tablet width
+
+Navigation
+
+Must remain usable on small screens
+
+No redesign, only stacking or collapsing if already supported
+
+IMPLEMENTATION RULES
+
+Use existing styling system (Tailwind / CSS)
+
+Use standard breakpoints (sm, md, lg)
+
+Prefer CSS over JS
+
+No inline styles
+
+No media-query chaos
+
+FILES YOU MAY TOUCH
+
+Layout containers (layout.tsx, main wrappers)
+
+Page-level components
+
+Structural component wrappers
+
+You may NOT modify:
+
+domain logic
+
+planner state
+
+progression engine
+
+AI logic
+
+OUTPUT REQUIRED
+
+When finished, respond with:
+
+Exact files modified
+
+What responsive changes were applied (bullet list)
+
+Confirmation that:
+
+No visual redesign occurred
+
+No behavior changed
+
+No logic was touched
+
+FINAL RULE
+
+If something already works responsively, do nothing.
+Stability beats cleverness.

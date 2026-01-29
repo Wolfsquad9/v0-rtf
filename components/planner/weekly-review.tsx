@@ -55,8 +55,8 @@ export function WeeklyReview({ weekId }: WeeklyReviewProps) {
         </h3>
         <div className="h-px flex-1 mx-8 bg-border opacity-30" />
       </div>
-      <div className="p-8 space-y-10">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-10">
+      <div className="p-4 md:p-8 space-y-10">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-12 gap-y-10">
           {reviewFields.map(({ key, label, icon: Icon, placeholder }) => (
             <div key={key} className="space-y-3">
               <Label className="text-[9px] font-bold uppercase tracking-[0.3em] flex items-center gap-3 text-muted-foreground/60">

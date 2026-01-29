@@ -93,10 +93,10 @@ export const PlannerLayout: React.FC<PlannerLayoutProps> = ({ children }) => {
         </div>
       </header>
 
-      <main className="flex-1 container py-12 px-4 md:px-8 mx-auto max-w-5xl">{children}</main>
+      <main className="flex-1 w-full py-12 px-4 md:px-8 mx-auto max-w-5xl overflow-x-hidden">{children}</main>
       
-      <footer className="border-t py-8 bg-muted/5">
-        <div className="container max-w-5xl mx-auto px-8 flex justify-between items-center">
+      <footer className="border-t py-8 bg-muted/5 w-full overflow-x-hidden">
+        <div className="container max-w-5xl mx-auto px-4 md:px-8 flex flex-col sm:flex-row justify-between items-center gap-4 text-center sm:text-left">
           <p className="text-[8px] font-bold uppercase tracking-[0.5em] text-muted-foreground/20">© 2026 RTF Operational Intelligence</p>
           <div className="flex gap-6">
             <span className="text-[8px] font-bold uppercase tracking-[0.2em] text-muted-foreground/20 italic">Discipline Equals Freedom</span>

@@ -36,7 +36,7 @@ export const DailyLog = memo(function DailyLog({ weekId, dayId }: DailyLogProps)
       <div
         className={cn("bg-card border transition-all duration-500", isToday ? "border-primary/40 shadow-2xl shadow-primary/5" : "border-border/60")}
       >
-        <div className="p-8 border-b flex flex-col md:flex-row md:items-center justify-between gap-6 bg-muted/10">
+        <div className="p-4 md:p-8 border-b flex flex-col md:flex-row md:items-center justify-between gap-6 bg-muted/10">
           <div className="space-y-1.5">
             <div className="flex items-center gap-4">
               <h3 className="text-lg font-bold uppercase tracking-[0.15em]">
@@ -54,16 +54,16 @@ export const DailyLog = memo(function DailyLog({ weekId, dayId }: DailyLogProps)
             </p>
           </div>
           <div className="flex items-center gap-6">
-            <div className="text-right hidden md:block">
+            <div className="text-right hidden sm:block">
               <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-muted-foreground/40">Load Intensity</p>
               <p className="text-[10px] font-bold uppercase tracking-widest">RPE Profile</p>
             </div>
             <RPESelector value={day.rpe || 0} onChange={(val) => updateDay(weekIndex, dayIndex, { rpe: val })} />
           </div>
         </div>
-        <div className="p-8 space-y-10">
+        <div className="p-4 md:p-8 space-y-10">
           <div className="space-y-6">
-            <div className="grid grid-cols-12 gap-6 text-[9px] font-bold uppercase tracking-[0.3em] text-muted-foreground/40 px-1">
+            <div className="hidden md:grid grid-cols-12 gap-6 text-[9px] font-bold uppercase tracking-[0.3em] text-muted-foreground/40 px-1">
               <div className="col-span-5">Movement Protocol</div>
               <div className="col-span-2 text-center text-[10px]">Sets</div>
               <div className="col-span-2 text-center text-[10px]">Reps</div>
@@ -72,8 +72,8 @@ export const DailyLog = memo(function DailyLog({ weekId, dayId }: DailyLogProps)
             <div className="space-y-4">
               {day.training?.map((ex, idx) => (
                 <div key={ex.id} className="space-y-3">
-                  <div className="grid grid-cols-12 gap-6 items-center">
-                    <div className="col-span-5">
+                  <div className="flex flex-col md:grid md:grid-cols-12 gap-4 md:gap-6 items-center">
+                    <div className="w-full md:col-span-5">
                       <Input
                         value={ex.name}
                         onChange={(e) => updateExercise(weekIndex, dayIndex, idx, "name", e.target.value)}
@@ -81,45 +81,49 @@ export const DailyLog = memo(function DailyLog({ weekId, dayId }: DailyLogProps)
                         placeholder="UNSPECIFIED MOVEMENT"
                       />
                     </div>
-                    <div className="col-span-2">
-                      <Input
-                        type="number"
-                        value={ex.sets || ""}
-                        onChange={(e) => {
-                          const val = Number(e.target.value)
-                          if (!isNaN(val)) {
-                            updateExercise(weekIndex, dayIndex, idx, "sets", Math.min(Math.max(val, 0), 100))
-                          }
-                        }}
-                        className="h-11 text-center text-xs font-bold bg-background/50 border rounded-none"
-                      />
-                    </div>
-                    <div className="col-span-2">
-                      <Input
-                        type="number"
-                        value={ex.reps || ""}
-                        onChange={(e) => {
-                          const val = Number(e.target.value)
-                          if (!isNaN(val)) {
-                            updateExercise(weekIndex, dayIndex, idx, "reps", Math.min(Math.max(val, 0), 100))
-                          }
-                        }}
-                        className="h-11 text-center text-xs font-bold bg-background/50 border rounded-none"
-                      />
-                    </div>
-                    <div className="col-span-3">
-                      <Input
-                        type="number"
-                        value={ex.loadKg || ""}
-                        onChange={(e) => {
-                          const val = Number(e.target.value)
-                          if (!isNaN(val)) {
-                            updateExercise(weekIndex, dayIndex, idx, "loadKg", Math.min(Math.max(val, 0), 10000))
-                          }
-                        }}
-                        className="h-11 text-center text-xs font-bold bg-background/50 border-primary/20 rounded-none text-primary focus-visible:ring-primary/20 transition-all"
-                        placeholder="0.0"
-                      />
+                    <div className="grid grid-cols-3 gap-2 md:contents w-full">
+                      <div className="md:col-span-2">
+                        <Input
+                          type="number"
+                          value={ex.sets || ""}
+                          onChange={(e) => {
+                            const val = Number(e.target.value)
+                            if (!isNaN(val)) {
+                              updateExercise(weekIndex, dayIndex, idx, "sets", Math.min(Math.max(val, 0), 100))
+                            }
+                          }}
+                          className="h-11 text-center text-xs font-bold bg-background/50 border rounded-none"
+                          placeholder="Sets"
+                        />
+                      </div>
+                      <div className="md:col-span-2">
+                        <Input
+                          type="number"
+                          value={ex.reps || ""}
+                          onChange={(e) => {
+                            const val = Number(e.target.value)
+                            if (!isNaN(val)) {
+                              updateExercise(weekIndex, dayIndex, idx, "reps", Math.min(Math.max(val, 0), 100))
+                            }
+                          }}
+                          className="h-11 text-center text-xs font-bold bg-background/50 border rounded-none"
+                          placeholder="Reps"
+                        />
+                      </div>
+                      <div className="md:col-span-3">
+                        <Input
+                          type="number"
+                          value={ex.loadKg || ""}
+                          onChange={(e) => {
+                            const val = Number(e.target.value)
+                            if (!isNaN(val)) {
+                              updateExercise(weekIndex, dayIndex, idx, "loadKg", Math.min(Math.max(val, 0), 10000))
+                            }
+                          }}
+                          className="h-11 text-center text-xs font-bold bg-background/50 border-primary/20 rounded-none text-primary focus-visible:ring-primary/20 transition-all"
+                          placeholder="KG"
+                        />
+                      </div>
                     </div>
                   </div>
                   <RPENotes weekIndex={weekIndex} dayIndex={dayIndex} exerciseIndex={idx} />

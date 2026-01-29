@@ -31,6 +31,9 @@ const generateInitialState = (): PlannerState => {
           nutrition: false,
           hydration: false,
           mobility: false,
+          water: false,
+          mindfulness: false,
+          recovery: false,
         },
         sleepHours: 0,
         waterIntake: 0,
@@ -126,7 +129,7 @@ export const PlannerProvider = ({ children }: { children: ReactNode }) => {
     })
   }, [])
 
-  const updateMetric = useCallback((key: string, value: number) => {
+  const updateMetric = useCallback((key: keyof NonNullable<PlannerState["coreMetrics"]>, value: number) => {
     setState((prev) => {
       if (!prev) return null
       return {
