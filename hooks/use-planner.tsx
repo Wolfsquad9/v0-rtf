@@ -1,7 +1,7 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from "react"
-import type { PlannerState, Week, DayEntry, ThemeName, VisionBoardItem, ProgressPhoto } from "@/types/planner"
+import { PlannerState, Week, DayEntry, ThemeName, VisionBoardItem, ProgressPhoto, TrainingFramework, MovementPattern } from "@/types/planner"
 import { loadState, saveState, clearState, loadStateFromDatabase } from "@/lib/storage"
 import { addDays, startOfWeek } from "date-fns"
 
@@ -21,19 +21,16 @@ const generateInitialState = (): PlannerState => {
         id: `w${i}-d${j}`,
         date: date.toISOString(),
         training: [
-          { id: "ex1", name: "Squat", sets: 4, reps: 8, loadKg: 0 },
-          { id: "ex2", name: "Bench Press", sets: 4, reps: 8, loadKg: 0 },
-          { id: "ex3", name: "Deadlift", sets: 3, reps: 5, loadKg: 0 },
-          { id: "ex4", name: "Overhead Press", sets: 3, reps: 8, loadKg: 0 },
+          { id: "ex1", name: "Squat", movementPattern: MovementPattern.SQUAT, sets: 4, reps: 8, loadKg: 0 },
+          { id: "ex2", name: "Bench Press", movementPattern: MovementPattern.HORIZONTAL_PUSH, sets: 4, reps: 8, loadKg: 0 },
+          { id: "ex3", name: "Deadlift", movementPattern: MovementPattern.HINGE, sets: 3, reps: 5, loadKg: 0 },
+          { id: "ex4", name: "Overhead Press", movementPattern: MovementPattern.VERTICAL_PUSH, sets: 3, reps: 8, loadKg: 0 },
         ],
         habits: {
           sleep: false,
           nutrition: false,
           hydration: false,
           mobility: false,
-          water: false,
-          mindfulness: false,
-          recovery: false,
         },
         sleepHours: 0,
         waterIntake: 0,
@@ -52,6 +49,7 @@ const generateInitialState = (): PlannerState => {
   return {
     programName: "Return to Form",
     theme: "dark-knight",
+    framework: TrainingFramework.STRENGTH_LINEAR,
     weeks,
     coreMetrics: { heightCm: null, weightKg: null, bodyfat: null, chest: null, waist: null, arms: null, legs: null },
     visionBoard: [
@@ -86,12 +84,10 @@ export const PlannerProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const initializeState = async () => {
-      // Try to load from database first
       const dbState = await loadStateFromDatabase()
       if (dbState) {
         setState(dbState)
       } else {
-        // Fall back to localStorage
         const stored = loadState()
         if (stored) {
           setState(stored)
@@ -128,7 +124,7 @@ export const PlannerProvider = ({ children }: { children: ReactNode }) => {
     })
   }, [])
 
-  const updateMetric = useCallback((key: keyof NonNullable<PlannerState["coreMetrics"]>, value: number) => {
+  const updateMetric = useCallback((key: string, value: number) => {
     setState((prev) => {
       if (!prev) return null
       return {
