@@ -4,13 +4,15 @@ import { createContext, useContext, useState, useEffect, useCallback, useRef, ty
 import { PlannerState, Week, DayEntry, ThemeName, VisionBoardItem, ProgressPhoto, TrainingFramework, MovementPattern } from "@/types/planner"
 import { loadState, saveState, clearState, loadStateFromDatabase } from "@/lib/storage"
 import { addDays, startOfWeek } from "date-fns"
+import { FRAMEWORK_CONFIGS } from "@/types/progression"
 
 const DEFAULT_WEEKS_COUNT = 12
 
-const generateInitialState = (): PlannerState => {
+const generateInitialState = (framework: TrainingFramework = TrainingFramework.STRENGTH_LINEAR): PlannerState => {
   const today = new Date()
   const start = startOfWeek(today, { weekStartsOn: 1 })
   const weeks: Week[] = []
+  const config = FRAMEWORK_CONFIGS[framework]
 
   for (let i = 0; i < DEFAULT_WEEKS_COUNT; i++) {
     const weekStart = addDays(start, i * 7)
@@ -20,12 +22,14 @@ const generateInitialState = (): PlannerState => {
       days.push({
         id: `w${i}-d${j}`,
         date: date.toISOString(),
-        training: [
-          { id: "ex1", name: "Squat", movementPattern: MovementPattern.SQUAT, sets: 4, reps: 8, loadKg: 0 },
-          { id: "ex2", name: "Bench Press", movementPattern: MovementPattern.HORIZONTAL_PUSH, sets: 4, reps: 8, loadKg: 0 },
-          { id: "ex3", name: "Deadlift", movementPattern: MovementPattern.HINGE, sets: 3, reps: 5, loadKg: 0 },
-          { id: "ex4", name: "Overhead Press", movementPattern: MovementPattern.VERTICAL_PUSH, sets: 3, reps: 8, loadKg: 0 },
-        ],
+        training: config.defaultMovements.map((dm, idx) => ({
+          id: `ex-${idx}`,
+          name: dm.name,
+          movementPattern: dm.pattern,
+          sets: 3,
+          reps: config.repRange.min,
+          loadKg: 0,
+        })),
         habits: {
           sleep: false,
           nutrition: false,
@@ -52,7 +56,7 @@ const generateInitialState = (): PlannerState => {
   return {
     programName: "Return to Form",
     theme: "dark-knight",
-    framework: TrainingFramework.STRENGTH_LINEAR,
+    framework,
     weeks,
     futureSessions: [],
     failureCount: 0,
@@ -78,6 +82,7 @@ interface PlannerContextType {
   updateVisionBoard: (items: VisionBoardItem[]) => void
   updateProgressPhotos: (photos: ProgressPhoto[]) => void
   resetPlanner: () => void
+  changeFramework: (framework: TrainingFramework) => void
 }
 
 const PlannerContext = createContext<PlannerContextType | undefined>(undefined)
@@ -208,6 +213,22 @@ export const PlannerProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [])
 
+  const changeFramework = useCallback((framework: TrainingFramework) => {
+    if (confirm("WARNING: Changing framework forces a full re-baseline. All future predictions will be cleared and new protocol rules will be applied. Proceed?")) {
+      setState((prev) => {
+        if (!prev) return null
+        const newState = generateInitialState(framework)
+        return {
+          ...newState,
+          theme: prev.theme,
+          coreMetrics: prev.coreMetrics,
+          visionBoard: prev.visionBoard,
+          progressPhotos: prev.progressPhotos,
+        }
+      })
+    }
+  }, [])
+
   return (
     <PlannerContext.Provider
       value={{
@@ -222,6 +243,7 @@ export const PlannerProvider = ({ children }: { children: ReactNode }) => {
         updateVisionBoard,
         updateProgressPhotos,
         resetPlanner,
+        changeFramework,
       }}
     >
       {children}

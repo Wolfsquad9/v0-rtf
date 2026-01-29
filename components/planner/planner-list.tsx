@@ -14,8 +14,11 @@ import { VisionBoard } from "./vision-board"
 import { ProgressPhotos } from "./progress-photos"
 import { WeeklyReview } from "./weekly-review"
 
+import { FrameworkSettings } from "./framework-settings"
+
 // Memoize section components
 const MemoizedCommandCenter = memo(CommandCenter)
+const MemoizedFrameworkSettings = memo(FrameworkSettings)
 const MemoizedThemeSwitcher = memo(ThemeSwitcher)
 const MemoizedCoreMetrics = memo(CoreMetrics)
 const MemoizedVisionBoard = memo(VisionBoard)
@@ -27,6 +30,7 @@ const MemoizedWeeklyReview = memo(WeeklyReview)
 
 type ListItem =
   | { type: "command-center" }
+  | { type: "framework-settings" }
   | { type: "theme-switcher" }
   | { type: "metrics" }
   | { type: "vision-board" }
@@ -44,6 +48,7 @@ export function PlannerList() {
   const items = useMemo(() => {
     const list: ListItem[] = [
       { type: "command-center" },
+      { type: "framework-settings" },
       { type: "theme-switcher" },
       { type: "metrics" },
       { type: "vision-board" },
@@ -70,6 +75,7 @@ export function PlannerList() {
     estimateSize: (index) => {
       const item = items[index]
       if (item.type === "command-center") return 300
+      if (item.type === "framework-settings") return 400
       if (item.type === "theme-switcher") return 200
       if (item.type === "metrics") return 400
       if (item.type === "vision-board") return 500
@@ -125,6 +131,7 @@ export function PlannerList() {
               )}
               <div className="pb-12">
                 {item.type === "command-center" && <MemoizedCommandCenter />}
+                {item.type === "framework-settings" && <MemoizedFrameworkSettings />}
                 {item.type === "theme-switcher" && <MemoizedThemeSwitcher />}
                 {item.type === "metrics" && <MemoizedCoreMetrics />}
                 {item.type === "vision-board" && <MemoizedVisionBoard />}
