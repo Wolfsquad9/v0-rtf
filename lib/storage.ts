@@ -22,6 +22,15 @@ export const loadState = (): PlannerState | null => {
     const serialized = localStorage.getItem(STORAGE_KEY)
     if (!serialized) return null
     const parsed = JSON.parse(serialized)
+    
+    // Migrations / Fixes
+    if (parsed && !parsed.framework) {
+      parsed.framework = "STRENGTH_LINEAR"
+    }
+    if (parsed && !parsed.failureCount && parsed.failureCount !== 0) {
+      parsed.failureCount = 0
+    }
+    
     return parsed as PlannerState
   } catch (e) {
     logError(e, "loadState")

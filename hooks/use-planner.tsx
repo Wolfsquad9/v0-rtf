@@ -83,6 +83,7 @@ interface PlannerContextType {
   updateProgressPhotos: (photos: ProgressPhoto[]) => void
   resetPlanner: () => void
   changeFramework: (framework: TrainingFramework) => void
+  initializeFramework: (framework: TrainingFramework) => void
 }
 
 const PlannerContext = createContext<PlannerContextType | undefined>(undefined)
@@ -94,18 +95,33 @@ export const PlannerProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const initializeState = async () => {
-      const dbState = await loadStateFromDatabase()
-      if (dbState) {
-        setState(dbState)
-      } else {
+      try {
+        // Try to load from database first
+        const dbState = await loadStateFromDatabase()
+        if (dbState) {
+          setState(dbState)
+          setIsLoading(false)
+          return
+        }
+      } catch (err) {
+        console.warn("[Storage] Database load failed, falling back to local storage:", err)
+      }
+
+      try {
+        // Fall back to localStorage
         const stored = loadState()
         if (stored) {
           setState(stored)
         } else {
-          setState(generateInitialState())
+          // No state found, will trigger onboarding
+          setState(null)
         }
+      } catch (err) {
+        console.error("[Storage] Local storage load failed:", err)
+        setState(null)
+      } finally {
+        setIsLoading(false)
       }
-      setIsLoading(false)
     }
     
     initializeState()
@@ -126,6 +142,10 @@ export const PlannerProvider = ({ children }: { children: ReactNode }) => {
       }
     }
   }, [state, isLoading])
+
+  const initializeFramework = useCallback((framework: TrainingFramework) => {
+    setState(generateInitialState(framework))
+  }, [])
 
   const updateTheme = useCallback((theme: ThemeName) => {
     setState((prev) => {
@@ -209,7 +229,7 @@ export const PlannerProvider = ({ children }: { children: ReactNode }) => {
   const resetPlanner = useCallback(() => {
     if (confirm("Are you sure you want to reset all data?")) {
       clearState()
-      setState(generateInitialState())
+      setState(null)
     }
   }, [])
 
@@ -244,6 +264,7 @@ export const PlannerProvider = ({ children }: { children: ReactNode }) => {
         updateProgressPhotos,
         resetPlanner,
         changeFramework,
+        initializeFramework,
       }}
     >
       {children}

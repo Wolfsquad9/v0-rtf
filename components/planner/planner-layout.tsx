@@ -66,7 +66,7 @@ export const PlannerLayout: React.FC<PlannerLayoutProps> = ({ children }) => {
           <div className="flex items-center gap-4 justify-end">
             <div className="hidden md:flex items-center gap-3 px-4 py-1.5 border border-border/40 text-[9px] font-bold uppercase tracking-[0.3em] text-muted-foreground/60 bg-muted/5">
               <span className="w-1 h-1 bg-primary animate-pulse" />
-              Operational State // Active
+              Operational State // {state?.framework || "Initializing"}
             </div>
 
             <div className="flex gap-2">
