@@ -1,0 +1,195 @@
+You are operating after Task 1 is completed.
+Foundational domain types, enums, and strict state constraints already exist.
+Do NOT modify Task 1 work, UI components, or planner flexibility.
+
+Your sole objective is to implement Task 2: a deterministic Adaptive Progression Engine.
+
+CONTEXT
+
+This system is not a flexible planner.
+It is a framework-locked training engine that removes user decision-making.
+
+Inputs:
+
+TrainingFramework (already locked in state)
+
+MovementPattern (already enforced)
+
+User-defined RPE scale (defined once)
+
+Completed session data: load, reps, RPE
+
+Outputs:
+
+Automatically generated next training sessions
+
+No user choice
+
+No editable system values
+
+No ambiguity
+
+HARD CONSTRAINTS (DO NOT VIOLATE)
+
+No UI changes
+
+No free-form AI feedback
+
+No user-adjustable progression
+
+No framework mixing
+
+No exercise substitution
+
+No regeneration logic beyond defined rules
+
+No abstractions without execution
+
+No “suggestions” — only deterministic outputs
+
+If a requirement is unclear, default to simplicity and rigidity.
+
+IMPLEMENTATION REQUIREMENTS
+1. Create a dedicated progression domain
+
+Add new types for:
+
+Session feedback (exercise, load, reps, RPE)
+
+Progression deltas
+
+Generated sets
+
+Generated exercises
+
+Generated sessions
+
+These must be pure data structures, no UI coupling.
+
+2. RPE Interpretation Layer
+
+Implement a function that compares:
+
+actual RPE vs target RPE
+
+It must return only:
+
+UNDER
+
+ON_TARGET
+
+OVER
+
+No gradients. No opinions.
+
+3. Framework-Specific Rules
+
+Each TrainingFramework must define:
+
+Target RPE
+
+Load increment
+
+Rep range
+
+Frameworks determine behavior.
+Users do not override frameworks.
+
+4. Progression Engine
+
+Implement a deterministic engine that:
+
+Increases load if UNDER
+
+Decreases load if OVER
+
+Maintains load if ON_TARGET
+
+No randomness. No ML. No text output.
+
+5. Session Auto-Generation
+
+Using the previous completed session:
+
+Generate the next session automatically
+
+Preserve movement patterns
+
+Preserve exercises
+
+Apply framework rules
+
+Output a GeneratedSession object
+
+This is a pure function.
+
+6. Lock-In Logic
+
+Implement logic to:
+
+Auto-generate 4 future sessions
+
+Freeze them
+
+Only regenerate if:
+
+Two consecutive failures occur
+
+OR the framework is changed (full reset)
+
+This logic must live in state or engine level, not UI.
+
+EXPLICIT NON-GOALS (DO NOT IMPLEMENT)
+
+Deload logic
+
+Coaching language
+
+Explanations to the user
+
+Progress charts
+
+Flexibility modes
+
+Hybrid training styles
+
+Bodybuilding + strength mixing
+
+Exercise swapping
+
+Those belong to later tasks.
+
+OUTPUT EXPECTATION
+
+Clean, minimal TypeScript files
+
+Clear function boundaries
+
+Deterministic behavior
+
+No unused abstractions
+
+No speculative code
+
+When finished, provide:
+
+File list added/modified
+
+Short explanation of engine flow
+
+Confirmation that UI and Task 1 were untouched
+
+MENTAL MODEL TO FOLLOW
+
+This system behaves like a merciless coach:
+
+It observes
+
+It decides
+
+It assigns
+
+It does not ask
+
+If the user wants freedom, they reset the system.
+If they stay, the system drives.

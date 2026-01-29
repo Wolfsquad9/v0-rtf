@@ -51,6 +51,8 @@ const generateInitialState = (): PlannerState => {
     theme: "dark-knight",
     framework: TrainingFramework.STRENGTH_LINEAR,
     weeks,
+    futureSessions: [],
+    failureCount: 0,
     coreMetrics: { heightCm: null, weightKg: null, bodyfat: null, chest: null, waist: null, arms: null, legs: null },
     visionBoard: [
       { id: "v1", title: "Primary Goal", content: "" },

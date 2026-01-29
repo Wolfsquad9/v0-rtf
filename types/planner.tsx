@@ -79,12 +79,16 @@ export interface ProgressPhoto {
   notes?: string
 }
 
+import { GeneratedSession } from "./progression"
+
 export interface PlannerState {
   userId?: string | null
   programName?: string
   theme: ThemeName
   framework: TrainingFramework
   weeks: Week[]
+  futureSessions?: GeneratedSession[]
+  failureCount: number
   coreMetrics: {
     heightCm: number | null
     weightKg: number | null
