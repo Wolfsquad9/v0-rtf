@@ -1,10 +1,11 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from "react"
-import { PlannerState, Week, DayEntry, ThemeName, VisionBoardItem, ProgressPhoto, TrainingFramework, MovementPattern } from "@/types/planner"
+import { PlannerState, Week, DayEntry, ThemeName, VisionBoardItem, ProgressPhoto, TrainingFramework, MovementPattern, ProgramCursor } from "@/types/planner"
 import { loadState, saveState, clearState, loadStateFromDatabase } from "@/lib/storage"
-import { addDays, startOfWeek } from "date-fns"
+import { addDays, startOfWeek, isSameDay, parseISO } from "date-fns"
 import { FRAMEWORK_CONFIGS } from "@/types/progression"
+import { projectFutureSessions } from "@/lib/progression-engine"
 
 const DEFAULT_WEEKS_COUNT = 12
 
@@ -22,6 +23,7 @@ const generateInitialState = (framework: TrainingFramework = TrainingFramework.S
       days.push({
         id: `w${i}-d${j}`,
         date: date.toISOString(),
+        status: "PLANNED",
         training: config.defaultMovements.map((dm, idx) => ({
           id: `ex-${idx}`,
           name: dm.name,
@@ -57,6 +59,7 @@ const generateInitialState = (framework: TrainingFramework = TrainingFramework.S
     programName: "Return to Form",
     theme: "dark-knight",
     framework,
+    programCursor: { weekIndex: 0, dayIndex: 0 },
     weeks,
     futureSessions: [],
     failureCount: 0,
@@ -95,33 +98,50 @@ export const PlannerProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const initializeState = async () => {
+      let loadedState: PlannerState | null = null
       try {
-        // Try to load from database first
-        const dbState = await loadStateFromDatabase()
-        if (dbState) {
-          setState(dbState)
-          setIsLoading(false)
-          return
+        loadedState = await loadStateFromDatabase()
+        if (!loadedState) {
+          loadedState = loadState()
         }
       } catch (err) {
-        console.warn("[Storage] Database load failed, falling back to local storage:", err)
+        console.warn("[Storage] Load failed, checking local storage", err)
+        loadedState = loadState()
       }
 
-      try {
-        // Fall back to localStorage
-        const stored = loadState()
-        if (stored) {
-          setState(stored)
+      if (loadedState) {
+        // Temporal Resolution
+        const today = new Date()
+        let updated = false
+        const newWeeks = [...loadedState.weeks]
+
+        newWeeks.forEach((week, wIdx) => {
+          week.days.forEach((day, dIdx) => {
+            const dayDate = parseISO(day.date)
+            if (isSameDay(dayDate, today)) {
+              if (day.status === "COMPLETED") {
+                day.status = "LOCKED"
+                updated = true
+              } else if (day.status === "PLANNED") {
+                day.status = "ACTIVE"
+                updated = true
+              }
+            } else if (dayDate < today && day.status === "ACTIVE") {
+              day.status = "PLANNED" // Reset stale active sessions
+              updated = true
+            }
+          })
+        })
+
+        if (updated) {
+          setState({ ...loadedState, weeks: newWeeks })
         } else {
-          // No state found, will trigger onboarding
-          setState(null)
+          setState(loadedState)
         }
-      } catch (err) {
-        console.error("[Storage] Local storage load failed:", err)
+      } else {
         setState(null)
-      } finally {
-        setIsLoading(false)
       }
+      setIsLoading(false)
     }
     
     initializeState()
@@ -167,11 +187,43 @@ export const PlannerProvider = ({ children }: { children: ReactNode }) => {
   const updateDay = useCallback((weekIndex: number, dayIndex: number, updates: Partial<DayEntry>) => {
     setState((prev) => {
       if (!prev) return null
+      const day = prev.weeks[weekIndex].days[dayIndex]
+      if (day.status === "LOCKED") return prev
+
       const newWeeks = [...prev.weeks]
       const newDays = [...newWeeks[weekIndex].days]
-      newDays[dayIndex] = { ...newDays[dayIndex], ...updates }
+      const wasCompleted = day.status === "COMPLETED"
+      
+      const updatedDay = { ...newDays[dayIndex], ...updates }
+      
+      // Auto-lock logic: if status is being set to COMPLETED
+      if (updates.status === "COMPLETED") {
+        updatedDay.completed = true
+      }
+
+      newDays[dayIndex] = updatedDay
       newWeeks[weekIndex] = { ...newWeeks[weekIndex], days: newDays }
-      return { ...prev, weeks: newWeeks }
+      
+      let newState = { ...prev, weeks: newWeeks }
+
+      // Cursor Advancement & Adaptive Projection
+      if (!wasCompleted && updates.status === "COMPLETED") {
+        // Advance Cursor
+        let nextW = weekIndex
+        let nextD = dayIndex + 1
+        if (nextD > 6) {
+          nextW++
+          nextD = 0
+        }
+        if (nextW < newState.weeks.length) {
+          newState.programCursor = { weekIndex: nextW, dayIndex: nextD }
+        }
+
+        // Project Adaptation
+        newState = projectFutureSessions(newState, weekIndex, dayIndex)
+      }
+
+      return newState
     })
   }, [])
 
@@ -179,6 +231,9 @@ export const PlannerProvider = ({ children }: { children: ReactNode }) => {
     (weekIndex: number, dayIndex: number, exerciseIndex: number, field: string, value: any) => {
       setState((prev) => {
         if (!prev) return null
+        const day = prev.weeks[weekIndex].days[dayIndex]
+        if (day.status === "LOCKED") return prev
+
         const newWeeks = [...prev.weeks]
         const newDays = [...newWeeks[weekIndex].days]
         const newTraining = [...(newDays[dayIndex].training || [])]

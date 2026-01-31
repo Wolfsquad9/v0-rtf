@@ -58,16 +58,41 @@ export const DailyLog = memo(function DailyLog({ weekId, dayId }: DailyLogProps)
               <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-muted-foreground/40">Load Intensity</p>
               <p className="text-[10px] font-bold uppercase tracking-widest">RPE Profile</p>
             </div>
-            <RPESelector value={day.rpe || 0} onChange={(val) => updateDay(weekIndex, dayIndex, { rpe: val })} />
+            <RPESelector 
+              value={day.rpe || 0} 
+              onChange={(val) => updateDay(weekIndex, dayIndex, { rpe: val })} 
+              disabled={day.status === "LOCKED"}
+            />
           </div>
         </div>
         <div className="p-4 md:p-8 space-y-10">
           <div className="space-y-6">
-            <div className="hidden md:grid grid-cols-12 gap-6 text-[9px] font-bold uppercase tracking-[0.3em] text-muted-foreground/40 px-1">
-              <div className="col-span-5">Movement Protocol</div>
-              <div className="col-span-2 text-center text-[10px]">Sets</div>
-              <div className="col-span-2 text-center text-[10px]">Reps</div>
-              <div className="col-span-3 text-center text-[10px]">Volume (KG)</div>
+            <div className="flex items-center justify-between">
+              <div className="hidden md:grid grid-cols-12 gap-6 text-[9px] font-bold uppercase tracking-[0.3em] text-muted-foreground/40 px-1 flex-1">
+                <div className="col-span-5">Movement Protocol</div>
+                <div className="col-span-2 text-center text-[10px]">Sets</div>
+                <div className="col-span-2 text-center text-[10px]">Reps</div>
+                <div className="col-span-3 text-center text-[10px]">Volume (KG)</div>
+              </div>
+              <div className="flex items-center gap-2">
+                {day.status === "LOCKED" ? (
+                  <div className="px-3 py-1 border border-border bg-muted/50 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                    Session Locked
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => updateDay(weekIndex, dayIndex, { status: day.status === "COMPLETED" ? "ACTIVE" : "COMPLETED" })}
+                    className={cn(
+                      "px-4 py-1.5 border text-[10px] font-bold uppercase tracking-[0.2em] transition-all",
+                      day.status === "COMPLETED" 
+                        ? "bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20" 
+                        : "bg-background border-border hover:border-primary/50 text-muted-foreground hover:text-primary"
+                    )}
+                  >
+                    {day.status === "COMPLETED" ? "Completed" : "Mark Complete"}
+                  </button>
+                )}
+              </div>
             </div>
             <div className="space-y-4">
               {day.training?.map((ex, idx) => (
@@ -77,6 +102,7 @@ export const DailyLog = memo(function DailyLog({ weekId, dayId }: DailyLogProps)
                       <Input
                         value={ex.name}
                         onChange={(e) => updateExercise(weekIndex, dayIndex, idx, "name", e.target.value)}
+                        disabled={day.status === "LOCKED"}
                         className="h-11 text-[11px] font-bold uppercase tracking-widest bg-background/50 border rounded-none focus-visible:ring-primary/10 transition-all"
                         placeholder="UNSPECIFIED MOVEMENT"
                       />
@@ -92,6 +118,7 @@ export const DailyLog = memo(function DailyLog({ weekId, dayId }: DailyLogProps)
                               updateExercise(weekIndex, dayIndex, idx, "sets", Math.min(Math.max(val, 0), 100))
                             }
                           }}
+                          disabled={day.status === "LOCKED"}
                           className="h-11 text-center text-xs font-bold bg-background/50 border rounded-none"
                           placeholder="Sets"
                         />
@@ -106,6 +133,7 @@ export const DailyLog = memo(function DailyLog({ weekId, dayId }: DailyLogProps)
                               updateExercise(weekIndex, dayIndex, idx, "reps", Math.min(Math.max(val, 0), 100))
                             }
                           }}
+                          disabled={day.status === "LOCKED"}
                           className="h-11 text-center text-xs font-bold bg-background/50 border rounded-none"
                           placeholder="Reps"
                         />
@@ -120,6 +148,7 @@ export const DailyLog = memo(function DailyLog({ weekId, dayId }: DailyLogProps)
                               updateExercise(weekIndex, dayIndex, idx, "loadKg", Math.min(Math.max(val, 0), 10000))
                             }
                           }}
+                          disabled={day.status === "LOCKED"}
                           className="h-11 text-center text-xs font-bold bg-background/50 border-primary/20 rounded-none text-primary focus-visible:ring-primary/20 transition-all"
                           placeholder="KG"
                         />

@@ -1,0 +1,139 @@
+Here you go. This is the clean, surgical prompt that fixes the real problem instead of adding more fake intelligence on top of broken time.
+
+No fluff. No aesthetics. No scope creep.
+
+⸻
+
+TASK 2 – Temporal Session Engine & Adaptive Progression Backbone
+
+Context
+
+The app currently allows users to log training data (RPE, load, reps), but does not truly adapt future sessions. The root cause is not missing formulas, but a broken temporal and session lifecycle model:
+	•	The app is anchored to a static date (e.g. Nov 25)
+	•	Sessions never close, lock, or advance
+	•	The program cursor (week/day) never progresses
+	•	Adaptive logic has no valid “last completed session” to read from
+As a result, the app appears adaptive but is functionally inert.
+
+Task 1 has already enforced strict domain types and framework constraints.
+This task must build the temporal spine of the system.
+
+⸻
+
+Objective
+
+Implement a date-aware, session-based training engine that:
+	1.	Correctly advances through time
+	2.	Locks completed sessions
+	3.	Generates new sessions for the current day
+	4.	Enables real downstream adaptation (without implementing full progression formulas yet)
+
+This task must change behavior, not aesthetics.
+
+⸻
+
+Core Requirements
+
+1. Session Model (Critical)
+Introduce a clear session lifecycle:
+
+type SessionStatus = "PLANNED" | "ACTIVE" | "COMPLETED" | "LOCKED"
+
+Each training day must include:
+	•	date (ISO YYYY-MM-DD)
+	•	status
+	•	framework
+	•	exercises (already typed from Task 1)
+	•	Logged performance data (RPE, load, reps)
+
+A LOCKED session is immutable.
+
+⸻
+
+2. Date Awareness (Non-Negotiable)
+On app load:
+	•	Resolve today’s date
+	•	Check if a session exists for today
+	•	If yes:
+	•	If completed → mark LOCKED
+	•	If not → ACTIVE
+	•	If no:
+	•	Generate a new session for today
+	•	Advance the program cursor
+	•	Base it on the last LOCKED session
+
+The app must never stay stuck on a past date unless the user is explicitly browsing history.
+
+⸻
+
+3. Program Cursor
+Separate calendar time from program structure.
+
+Introduce:
+
+programCursor: {
+  weekIndex: number
+  dayIndex: number
+}
+
+Rules:
+	•	Cursor advances only when a session is completed
+	•	Cursor progression is framework-dependent
+	•	Cursor is never reset on reload
+
+⸻
+
+4. Session Locking Logic
+When a session is marked completed:
+	•	Freeze all values
+	•	Prevent further edits
+	•	Persist as historical truth
+	•	Trigger readiness for next-day generation
+
+This is mandatory for adaptation integrity.
+
+⸻
+
+5. Adaptive Readiness (Foundation Only)
+Do NOT implement full progression math yet.
+
+But you MUST:
+	•	Ensure next-day session generation can read from the last LOCKED session
+	•	Expose a clean hook or selector such as:
+
+getLastCompletedSession()
+
+If this does not exist, adaptation cannot exist later.
+
+⸻
+
+Explicit Non-Goals (Do NOT Touch)
+	•	UI aesthetics
+	•	Styling, colors, spacing
+	•	Advanced progression formulas
+	•	RPE math beyond storage and retrieval
+
+⸻
+
+Acceptance Criteria
+	•	App always opens on the correct current date
+	•	Completed days are locked and immutable
+	•	New days are auto-generated when time advances
+	•	Program cursor progresses correctly
+	•	RPE and performance data are now structurally usable for future adaptation
+	•	No visual regressions
+
+⸻
+
+Guiding Principle
+
+A training system that does not move through time cannot adapt.
+Fix time first. Intelligence comes later.
+
+⸻
+
+That’s the prompt.
+
+If an AI or dev follows this and still ships something fake-adaptive, that’s not a skill issue. That’s willful negligence.
+
+Next logical step after this task succeeds: Task 3 – Adaptive Load & Volume Projection Engine, which will finally make RPE mean something.

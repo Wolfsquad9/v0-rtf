@@ -18,6 +18,8 @@ export type RPE = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10
 
 export type ThemeName = "dark-knight" | "crimson-red" | "special-ops" | "arctic-blue"
 
+export type SessionStatus = "PLANNED" | "ACTIVE" | "COMPLETED" | "LOCKED"
+
 export interface Exercise {
   id: string
   name: string
@@ -35,6 +37,7 @@ export interface Exercise {
 export interface DayEntry {
   id: string
   date: string
+  status: SessionStatus
   completed?: boolean
   rpe?: RPE
   training: Exercise[]
@@ -83,6 +86,11 @@ export interface ProgressPhoto {
   notes?: string
 }
 
+export interface ProgramCursor {
+  weekIndex: number
+  dayIndex: number
+}
+
 import { GeneratedSession } from "./progression"
 
 export interface PlannerState {
@@ -90,6 +98,7 @@ export interface PlannerState {
   programName?: string
   theme: ThemeName
   framework: TrainingFramework
+  programCursor: ProgramCursor
   weeks: Week[]
   futureSessions?: GeneratedSession[]
   failureCount: number
