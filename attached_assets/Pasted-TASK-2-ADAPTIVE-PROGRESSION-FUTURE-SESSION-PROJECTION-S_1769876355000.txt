@@ -1,0 +1,168 @@
+TASK 2 — ADAPTIVE PROGRESSION & FUTURE SESSION PROJECTION
+SYSTEM DIRECTIVE
+
+You are now implementing Task 2: Adaptive Progression Execution.
+
+Task 1 established domain integrity.
+Task 2 must make the system actually adaptive.
+
+You are NOT allowed to:
+
+Change UI styling or layout
+
+Add new frameworks
+
+Add new user inputs
+
+Change onboarding
+
+Change storage strategy
+
+Add “AI magic” in place of logic
+
+This task is pure behavior.
+
+CORE PROBLEM (TO FIX)
+
+The system currently:
+
+Accepts user performance data (weight, RPE)
+
+Evaluates it in isolation
+
+Fails to project changes into future sessions
+
+This breaks the core promise of the app.
+
+Your mission is to make future days update automatically.
+
+REQUIRED BEHAVIOR (NON-NEGOTIABLE)
+1. Deterministic Projection Engine
+
+After every completed session:
+
+The system MUST recalculate:
+
+The next 2 upcoming sessions minimum
+
+For the same movement patterns
+
+Using the active TrainingFramework rules
+
+This is NOT optional.
+If projections are missing, the system is broken.
+
+2. Framework-Specific Adaptation Rules
+
+Use pure functions only.
+No randomness. No heuristics without justification.
+
+Examples (illustrative, not optional):
+
+STRENGTH_LINEAR
+
+ON_TARGET RPE → +2.5kg next exposure
+
+UNDER RPE → +5kg
+
+OVER RPE → −2.5kg or repeat load
+
+HYPERTROPHY
+
+ON_TARGET → add 1 set OR +2 reps
+
+UNDER → add volume first, load second
+
+OVER → reduce volume, preserve load
+
+POWERLIFTING
+
+Adapt intensity (%1RM proxy)
+
+Respect wave structure
+
+No blind linear jumps
+
+STRENGTH_CONDITIONING
+
+Adapt density or rest intervals
+
+Load changes are secondary
+
+These rules must live in a single progression engine, not scattered.
+
+3. Data Flow Contract (CRITICAL)
+
+Implement this exact flow:
+
+User logs session (weight, reps, sets, RPE)
+
+Session is marked complete
+
+Progression engine evaluates performance
+
+Engine mutates future DayEntries
+
+Future sessions reflect updated prescriptions
+
+If step 4 does not happen, the task has failed.
+
+4. Guardrails
+
+Never overwrite completed sessions
+
+Never modify past data
+
+Framework change must still trigger re-baseline
+
+Projections must be idempotent (no double stacking on reload)
+
+IMPLEMENTATION REQUIREMENTS
+
+You must:
+
+Identify where future sessions are generated
+
+Introduce a post-session projection hook
+
+Ensure projections persist (local + backend)
+
+Keep logic testable and deterministic
+
+OUTPUT REQUIREMENTS
+
+At the end, provide:
+
+A clear explanation of:
+
+Where adaptation was previously broken
+
+How future sessions are now recalculated
+
+A concrete example:
+
+Session A logged → Session B & C changed
+
+A list of files modified (logic only)
+
+Do NOT mention UI.
+Do NOT mention aesthetics.
+Do NOT suggest future tasks.
+
+QUALITY BAR
+
+This app markets itself as:
+
+“Adaptive training based on performance.”
+
+After this task:
+
+That statement must be objectively true
+
+No manual refresh tricks
+
+No fake “AI analysis” without consequences
+
+Numbers must move
+
+If you cannot guarantee forward adaptation, stop and say so.
