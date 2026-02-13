@@ -18,6 +18,17 @@ export type RPE = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10
 
 export type ThemeName = "dark-knight" | "crimson-red" | "special-ops" | "arctic-blue"
 
+export interface ThemeColors {
+  name: string
+  primary: string
+  secondary: string
+  accent: string
+  background: string
+  surface: string
+  text: string
+  border: string
+}
+
 export type SessionStatus = "PLANNED" | "ACTIVE" | "COMPLETED" | "LOCKED"
 
 export interface Exercise {
@@ -32,6 +43,7 @@ export interface Exercise {
   actualReps?: number
   actualSets?: number
   notes?: string
+  rpeNotes?: string
 }
 
 export interface DayEntry {
@@ -78,14 +90,6 @@ export interface VisionBoardItem {
   content: string
 }
 
-export interface ProgressPhoto {
-  id: string
-  date: string
-  week: number
-  url?: string
-  notes?: string
-}
-
 export interface ProgramCursor {
   weekIndex: number
   dayIndex: number
@@ -114,4 +118,12 @@ export interface PlannerState {
   visionBoard: VisionBoardItem[]
   progressPhotos: ProgressPhoto[]
   lastSavedAt: string | null
+}
+
+export interface ProgressPhoto {
+  id: string
+  date: string
+  week: number
+  url?: string
+  notes?: string
 }

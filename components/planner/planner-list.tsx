@@ -1,7 +1,6 @@
 "use client"
 
 import { useMemo, useRef, memo } from "react"
-import { useWindowVirtualizer } from "@tanstack/react-virtual"
 import { usePlanner } from "@/hooks/use-planner"
 import { DailyLog } from "./daily-log"
 import { WeekHeader } from "./week-header"
@@ -70,26 +69,6 @@ export function PlannerList() {
     return list
   }, [state])
 
-  const virtualizer = useWindowVirtualizer({
-    count: items.length,
-    estimateSize: (index) => {
-      const item = items[index]
-      if (item.type === "command-center") return 300
-      if (item.type === "framework-settings") return 400
-      if (item.type === "theme-switcher") return 200
-      if (item.type === "metrics") return 400
-      if (item.type === "vision-board") return 500
-      if (item.type === "progress-photos") return 600
-      if (item.type === "rpe-guide") return 800
-      if (item.type === "rpe-calculator") return 700
-      if (item.type === "week-header") return 250
-      if (item.type === "week-review") return 800
-      return 1400
-    },
-    overscan: 2,
-    scrollMargin: listRef.current?.offsetTop ?? 0,
-  })
-
   if (isLoading || !state || !state.weeks) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
@@ -100,32 +79,15 @@ export function PlannerList() {
 
   return (
     <div ref={listRef} className="max-w-5xl mx-auto px-4 pb-32" id="planner-content">
-      <div
-        style={{
-          height: `${virtualizer.getTotalSize()}px`,
-          width: "100%",
-          position: "relative",
-        }}
-      >
-        {virtualizer.getVirtualItems().map((virtualItem) => {
-          const item = items[virtualItem.index]
+      <div className="w-full relative">
+        {items.map((item, index) => {
           const isDividerNeeded =
-            virtualItem.index > 0 &&
-            (items[virtualItem.index - 1].type === "rpe-calculator" ||
-              (items[virtualItem.index].type === "week-header" && items[virtualItem.index - 1].type !== "week-review"))
+            index > 0 &&
+            (items[index - 1].type === "rpe-calculator" ||
+              (item.type === "week-header" && items[index - 1].type !== "week-review"))
 
           return (
-            <div
-              key={String(virtualItem.key)}
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                width: "100%",
-                height: `${virtualItem.size}px`,
-                transform: `translateY(${virtualItem.start}px)`,
-              }}
-            >
+            <div key={`${item.type}-${index}`} className="w-full">
               {isDividerNeeded && (
                 <div className="my-20 h-px bg-border max-w-xs mx-auto opacity-30" />
               )}

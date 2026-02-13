@@ -1,0 +1,102 @@
+You are in surgical patch mode.
+Apply the following fixes without changing UI aesthetics, spacing, color system, typography classes, or component hierarchy.
+Goal
+
+Implement all previously discussed safe fixes:
+
+    remove the planner overlay issue,
+
+    restore type integrity,
+
+    keep behavior stable,
+
+    commit-ready code.
+
+Constraints
+
+    Do not redesign UI.
+
+    Do not add new features.
+
+    Do not refactor unrelated files.
+
+    Keep existing classNames unless absolutely necessary.
+
+    Prefer minimal diff.
+
+Required changes
+1) Fix app overlay/root rendering issue in planner list
+
+File: components/planner/planner-list.tsx
+
+    Remove virtualized absolute-layer rendering logic that uses @tanstack/react-virtual (e.g., useWindowVirtualizer, getVirtualItems, getTotalSize, absolute positioned wrappers with translateY).
+
+    Replace with normal sequential rendering using items.map(...) in natural document flow.
+
+    Preserve:
+
+        same sections and order,
+
+        same divider logic between sections,
+
+        same components rendered (CommandCenter, FrameworkSettings, ThemeSwitcher, CoreMetrics, VisionBoard, ProgressPhotos, RPEScaleGuide, RPECalculator, week/day/review blocks).
+
+    Keep visual output unchanged; only remove overlap risk.
+
+2) Fix type contract issues
+
+File: types/planner.tsx
+
+    Add missing exported interface:
+
+        ThemeColors with fields:
+
+            name, primary, secondary, accent, background, surface, text, border (all strings).
+
+    In Exercise type, add optional rpeNotes?: string for compatibility (keep existing fields).
+
+3) Fix ThemeProvider typing
+
+File: components/theme-provider.tsx
+
+    Keep component behavior same.
+
+    Ensure props include children: React.ReactNode (via a local extended props interface if needed) so TypeScript is satisfied.
+
+4) Fix Button typing safely
+
+File: components/ui/button.tsx
+
+    Resolve current Slot/button typing mismatch.
+
+    Keep API identical (variant, size, asChild, className, props spreading).
+
+    Ensure TypeScript passes with strict typing and no visual change.
+
+5) Remove stale conflicting legacy file
+
+File: lib/planner-utils.ts
+
+    If unused and outdated, remove it to eliminate type drift and compile conflicts.
+
+Validation (must run)
+
+Run these commands and report results:
+
+    npx tsc --noEmit
+
+    npm run build (if font/network limitation occurs, report clearly as environment limitation)
+
+    git status --short
+
+Output format
+
+Return:
+
+    bullet summary of changed files,
+
+    exact commands run and outputs,
+
+    if build fails due to Google font fetch/network, label it as environment limitation (not logic regression).
+
+Do not stop early.
