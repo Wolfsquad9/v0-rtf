@@ -81,12 +81,13 @@ export const calculateNextPrescription = (
       result = { load: actual.load, reps: prescribed.reps, rpe: prescribed.rpe }
   }
 
-  console.log(`[PROG-ENGINE] Adaptation Trace:
-    Framework: ${framework}
-    Prescribed: ${prescribed.load}kg x ${prescribed.reps} @ RPE ${prescribed.rpe}
-    Actual: ${actual.load}kg x ${actual.reps} @ RPE ${actual.rpe}
-    Classification: ${classification}
-    Result: ${result.load}kg x ${result.reps} @ RPE ${result.rpe}`);
+  // FORENSIC LOGGING
+  console.log(`[FORENSIC-ADAPT] Chain Trace:
+    - Framework: ${framework}
+    - Prescribed: ${prescribed.load}kg x ${prescribed.reps} @ RPE ${prescribed.rpe}
+    - Actual: ${actual.load}kg x ${actual.reps} @ RPE ${actual.rpe}
+    - Classification: ${classification}
+    - Computed Result: ${result.load}kg x ${result.reps} @ RPE ${result.rpe}`);
 
   return result
 }
@@ -99,10 +100,11 @@ export const projectFutureSessions = (
   weekIndex: number,
   dayIndex: number
 ): PlannerState => {
-  console.log(`[PROG-ENGINE] Projecting future sessions for Week ${weekIndex} Day ${dayIndex}...`);
   const completedDay = state.weeks[weekIndex].days[dayIndex]
   const framework = state.framework
   const newWeeks = [...state.weeks]
+
+  console.log(`[FORENSIC-PROJ] Triggered for Week ${weekIndex} Day ${dayIndex}. Scanning for future exposures...`);
 
   let projectionsCount = 0
   for (let w = weekIndex; w < newWeeks.length; w++) {
@@ -118,6 +120,7 @@ export const projectFutureSessions = (
         )
 
         if (matchingEx) {
+          // CALLING DETERMINISTIC ENGINE (Line 107 approx)
           const prescription = calculateNextPrescription(
             framework,
             { load: matchingEx.loadKg || 0, reps: matchingEx.reps, rpe: matchingEx.targetRpe || 8 },
@@ -135,7 +138,8 @@ export const projectFutureSessions = (
         return futureEx
       })
 
-      console.log(`[PROG-ENGINE] Mutating Future Session: Week ${w} Day ${d}`);
+      console.log(`[FORENSIC-PROJ] Mutating Future Session: W${w}D${d}. Exercises updated: ${updatedTraining.length}`);
+      
       newWeeks[w] = {
         ...newWeeks[w],
         days: newWeeks[w].days.map((day, idx) => 
@@ -150,9 +154,6 @@ export const projectFutureSessions = (
   return { ...state, weeks: newWeeks }
 }
 
-/**
- * Pure Function for Session Generation (Legacy/Internal)
- */
 export const generateNextSession = (
   previousExercises: Exercise[],
   framework: TrainingFramework

@@ -206,8 +206,9 @@ export const PlannerProvider = ({ children }: { children: ReactNode }) => {
       
       let newState = { ...prev, weeks: newWeeks }
 
-      // Cursor Advancement & Adaptive Projection
+      // Cursor Advancement & Adaptive Progression
       if (!wasCompleted && updates.status === "COMPLETED") {
+        console.log(`[HOOK] Session Completed: Week ${weekIndex}, Day ${dayIndex}. Triggering Adaptation Chain.`);
         // Advance Cursor
         let nextW = weekIndex
         let nextD = dayIndex + 1
@@ -217,6 +218,7 @@ export const PlannerProvider = ({ children }: { children: ReactNode }) => {
         }
         if (nextW < newState.weeks.length) {
           newState.programCursor = { weekIndex: nextW, dayIndex: nextD }
+          console.log(`[HOOK] Program Cursor Advanced: Week ${nextW}, Day ${nextD}`);
         }
 
         // Project Adaptation
