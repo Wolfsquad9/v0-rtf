@@ -20,62 +20,75 @@ export const calculateNextPrescription = (
   actual: { load: number; reps: number; rpe: RPE }
 ): { load: number; reps: number; rpe: RPE; sets?: number } => {
   const config = FRAMEWORK_CONFIGS[framework]
-  const rpeDelta = actual.rpe - prescribed.rpe
-  const repDelta = actual.reps - prescribed.reps
   
   // Performance Classification
-  // Underperform: actual RPE > target OR missed reps
-  // Overperform: actual RPE < target AND hit or exceeded reps
   const isUnderperforming = actual.rpe > config.targetRpe || actual.reps < prescribed.reps
   const isOverperforming = actual.rpe < config.targetRpe && actual.reps >= prescribed.reps
   
+  const classification = isOverperforming ? "OVERPERFORM" : isUnderperforming ? "UNDERPERFORM" : "ON_TARGET"
+  
+  let result: { load: number; reps: number; rpe: RPE; sets?: number }
+
   switch (framework) {
     case TrainingFramework.STRENGTH_LINEAR:
       if (isOverperforming) {
-        return { load: actual.load + (config.loadIncrementKg * 2), reps: prescribed.reps, rpe: config.targetRpe }
+        result = { load: actual.load + (config.loadIncrementKg * 2), reps: prescribed.reps, rpe: config.targetRpe }
       } else if (isUnderperforming) {
-        // If they missed reps, drop weight. If they hit reps but overshot RPE, repeat or small drop.
         const newLoad = actual.reps < prescribed.reps 
           ? Math.max(0, actual.load - config.loadIncrementKg)
           : actual.load
-        return { load: newLoad, reps: prescribed.reps, rpe: config.targetRpe }
+        result = { load: newLoad, reps: prescribed.reps, rpe: config.targetRpe }
+      } else {
+        result = { load: actual.load + config.loadIncrementKg, reps: prescribed.reps, rpe: config.targetRpe }
       }
-      return { load: actual.load + config.loadIncrementKg, reps: prescribed.reps, rpe: config.targetRpe }
+      break
 
     case TrainingFramework.HYPERTROPHY:
       if (isOverperforming) {
-        // Add reps first until max of range, then add load
         if (actual.reps >= config.repRange.max) {
-          return { load: actual.load + config.loadIncrementKg, reps: config.repRange.min, rpe: config.targetRpe }
+          result = { load: actual.load + config.loadIncrementKg, reps: config.repRange.min, rpe: config.targetRpe }
+        } else {
+          result = { load: actual.load, reps: Math.min(actual.reps + 2, config.repRange.max), rpe: config.targetRpe }
         }
-        return { load: actual.load, reps: Math.min(actual.reps + 2, config.repRange.max), rpe: config.targetRpe }
       } else if (isUnderperforming) {
-        // Reduce reps to min of range, preserve load
-        return { load: actual.load, reps: Math.max(actual.reps - 1, config.repRange.min), rpe: config.targetRpe }
+        result = { load: actual.load, reps: Math.max(actual.reps - 1, config.repRange.min), rpe: config.targetRpe }
+      } else {
+        result = { load: actual.load, reps: actual.reps, rpe: config.targetRpe }
       }
-      // On target: add a set (if we had sets input) or just hold load/reps
-      return { load: actual.load, reps: actual.reps, rpe: config.targetRpe }
+      break
 
     case TrainingFramework.POWERLIFTING:
       if (isOverperforming) {
-        return { load: actual.load + 2.5, reps: prescribed.reps, rpe: config.targetRpe }
+        result = { load: actual.load + 2.5, reps: prescribed.reps, rpe: config.targetRpe }
       } else if (isUnderperforming) {
-        return { load: Math.max(0, actual.load - 2.5), reps: prescribed.reps, rpe: config.targetRpe }
+        result = { load: Math.max(0, actual.load - 2.5), reps: prescribed.reps, rpe: config.targetRpe }
+      } else {
+        result = { load: actual.load + 1, reps: prescribed.reps, rpe: config.targetRpe }
       }
-      return { load: actual.load + 1, reps: prescribed.reps, rpe: config.targetRpe }
+      break
 
     case TrainingFramework.STRENGTH_CONDITIONING:
-      // Load changes are secondary, focus on maintaining performance
       if (isOverperforming) {
-        return { load: actual.load + 2, reps: prescribed.reps, rpe: config.targetRpe }
+        result = { load: actual.load + 2, reps: prescribed.reps, rpe: config.targetRpe }
       } else if (isUnderperforming) {
-        return { load: actual.load, reps: prescribed.reps, rpe: config.targetRpe }
+        result = { load: actual.load, reps: prescribed.reps, rpe: config.targetRpe }
+      } else {
+        result = { load: actual.load, reps: prescribed.reps, rpe: config.targetRpe }
       }
-      return { load: actual.load, reps: prescribed.reps, rpe: config.targetRpe }
+      break
 
     default:
-      return { load: actual.load, reps: prescribed.reps, rpe: prescribed.rpe }
+      result = { load: actual.load, reps: prescribed.reps, rpe: prescribed.rpe }
   }
+
+  console.log(`[PROG-ENGINE] Adaptation Trace:
+    Framework: ${framework}
+    Prescribed: ${prescribed.load}kg x ${prescribed.reps} @ RPE ${prescribed.rpe}
+    Actual: ${actual.load}kg x ${actual.reps} @ RPE ${actual.rpe}
+    Classification: ${classification}
+    Result: ${result.load}kg x ${result.reps} @ RPE ${result.rpe}`);
+
+  return result
 }
 
 /**
@@ -86,6 +99,7 @@ export const projectFutureSessions = (
   weekIndex: number,
   dayIndex: number
 ): PlannerState => {
+  console.log(`[PROG-ENGINE] Projecting future sessions for Week ${weekIndex} Day ${dayIndex}...`);
   const completedDay = state.weeks[weekIndex].days[dayIndex]
   const framework = state.framework
   const newWeeks = [...state.weeks]
@@ -121,6 +135,7 @@ export const projectFutureSessions = (
         return futureEx
       })
 
+      console.log(`[PROG-ENGINE] Mutating Future Session: Week ${w} Day ${d}`);
       newWeeks[w] = {
         ...newWeeks[w],
         days: newWeeks[w].days.map((day, idx) => 
