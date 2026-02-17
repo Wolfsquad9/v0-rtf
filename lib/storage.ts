@@ -30,6 +30,9 @@ export const loadState = (): PlannerState | null => {
     if (parsed && !parsed.failureCount && parsed.failureCount !== 0) {
       parsed.failureCount = 0
     }
+    if (parsed && !parsed.programCursor) {
+      parsed.programCursor = { weekIndex: 0, dayIndex: 0 }
+    }
     
     return parsed as PlannerState
   } catch (e) {
@@ -49,12 +52,25 @@ export const saveState = (state: PlannerState): void => {
     
     // Try to sync to Supabase in background (non-blocking)
     const userId = getUserId()
+    
+    console.log(`[STORAGE] Initiating background sync for user ${userId}...`);
+    
     fetch("/api/db/save-state", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId, state })
-    }).catch(err => {
-      console.warn("[Storage] Background sync failed:", err)
+    })
+    .then(async (res) => {
+      if (res.ok) {
+        localStorage.setItem(LAST_SYNC_KEY, new Date().toISOString());
+        console.log(`[STORAGE] Background sync successful for user ${userId}`);
+      } else {
+        const error = await res.json();
+        console.warn(`[STORAGE] Background sync failed:`, error);
+      }
+    })
+    .catch(err => {
+      console.warn("[Storage] Background sync network error:", err)
     })
   } catch (e) {
     logError(e, "saveState")
@@ -70,10 +86,11 @@ export const loadStateFromDatabase = async (): Promise<PlannerState | null> => {
   
   try {
     const userId = getUserId()
+    console.log(`[STORAGE] Fetching state from DB for user ${userId}...`);
     const res = await fetch(`/api/db/load-state?userId=${encodeURIComponent(userId)}`)
     
     if (!res.ok) {
-      console.warn("[Storage] Load failed:", res.status)
+      console.warn("[STORAGE] DB Load failed:", res.status)
       return null
     }
     
@@ -81,9 +98,12 @@ export const loadStateFromDatabase = async (): Promise<PlannerState | null> => {
     const dbState = data.state
     
     if (dbState) {
-      // Also update localStorage with latest from DB
+      console.log(`[STORAGE] DB Load success. Version: ${dbState.lastSavedAt}`);
+      // Also update localStorage with latest from DB to keep them in sync
       localStorage.setItem(STORAGE_KEY, JSON.stringify(dbState))
       localStorage.setItem(LAST_SYNC_KEY, new Date().toISOString())
+    } else {
+      console.log(`[STORAGE] No state found in DB for user ${userId}`);
     }
     
     return dbState

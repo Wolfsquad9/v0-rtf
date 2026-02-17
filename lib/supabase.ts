@@ -23,26 +23,37 @@ export async function saveStateToSupabase(userId: string, state: any) {
   if (!client) return false;
 
   try {
-    const { error } = await client
+    // CRITICAL: Ensure we are not saving an undefined or broken state
+    if (!state || !state.weeks) {
+      console.error("[SUPABASE] Refusing to save invalid state object");
+      return false;
+    }
+
+    console.log(`[SUPABASE] Executing UPSERT for user ${userId}...`);
+    
+    const { data, error } = await client
       .from("planner_state")
       .upsert(
         {
           user_id: userId,
           state: state,
-          program_name: state.programName || null,
+          program_name: state.programName || "Return to Form",
           theme: state.theme || "dark-knight",
           updated_at: new Date().toISOString()
         },
         { onConflict: "user_id" }
-      );
+      )
+      .select();
 
     if (error) {
-      console.error("[Supabase] Save error:", error);
+      console.error("[SUPABASE] Upsert Error:", error.message, error.details);
       return false;
     }
+
+    console.log(`[SUPABASE] Persistence Verified for ${userId}. Rows affected: ${data?.length}`);
     return true;
   } catch (err) {
-    console.error("[Supabase] Save exception:", err);
+    console.error("[SUPABASE] Fatal Save Exception:", err);
     return false;
   }
 }
@@ -56,20 +67,16 @@ export async function loadStateFromSupabase(userId: string) {
       .from("planner_state")
       .select("state")
       .eq("user_id", userId)
-      .single();
+      .maybeSingle();
 
     if (error) {
-      if (error.code === "PGRST116") {
-        // Not found - this is OK
-        return null;
-      }
-      console.error("[Supabase] Load error:", error);
+      console.error("[SUPABASE] Load Error:", error.message);
       return null;
     }
 
-    return (data as any)?.state || null;
+    return data?.state || null;
   } catch (err) {
-    console.error("[Supabase] Load exception:", err);
+    console.error("[SUPABASE] Fatal Load Exception:", err);
     return null;
   }
 }
@@ -79,25 +86,17 @@ export async function initializeSupabaseTable() {
   if (!client) return;
 
   try {
-    // Check if table exists by trying to query it
-    const { data, error } = await client
+    const { error } = await client
       .from("planner_state")
       .select("id")
       .limit(1);
 
-    if (error && error.code === "PGRST116") {
-      console.log("[Supabase] Table exists but is empty");
-      return;
+    if (error) {
+      console.log("[SUPABASE] Table status check:", error.message);
+    } else {
+      console.log("[SUPABASE] Table operational");
     }
-
-    if (error && error.code?.includes("42P01")) {
-      console.log("[Supabase] Table does not exist, creating...");
-      // Table will be created via dashboard or migrations
-      return;
-    }
-
-    console.log("[Supabase] Table is ready");
   } catch (err) {
-    console.error("[Supabase] Init error:", err);
+    console.error("[SUPABASE] Init error:", err);
   }
 }

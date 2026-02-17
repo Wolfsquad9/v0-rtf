@@ -6,48 +6,62 @@ export async function POST(req: Request) {
     const { userId, state } = await req.json();
 
     if (!userId || !state) {
-      return NextResponse.json(
-        { error: "Missing userId or state" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Missing payload" }, { status: 400 });
     }
 
-    // FORENSIC LOGGING: START
-    console.log(`[FORENSIC-DB] UPDATE Chain Started for User: ${userId}`);
+    const requestTime = new Date().toISOString();
+    console.log(`\n[FORENSIC-DB] === TRANSACTION START: ${requestTime} ===`);
+    console.log(`[FORENSIC-DB] User: ${userId}`);
+
+    // 1. COMPARISON: Check the next session's load in the current DB vs the incoming payload
+    const existingState = await loadStateFromSupabase(userId);
     
-    // FETCH CURRENT STATE (PRE-UPDATE)
-    const prevState = await loadStateFromSupabase(userId);
-    if (prevState) {
-      console.log(`[FORENSIC-DB] Pre-Update Cursor: W${prevState.programCursor?.weekIndex} D${prevState.programCursor?.dayIndex}`);
+    if (existingState) {
+      // Find the first non-completed day to verify mutation
+      const findFirstPlanned = (s: any) => {
+        for (const w of s.weeks) {
+          for (const d of w.days) {
+            if (d.status === "PLANNED") return d;
+          }
+        }
+        return null;
+      };
+
+      const oldNextDay = findFirstPlanned(existingState);
+      const newNextDay = findFirstPlanned(state);
+
+      if (oldNextDay && newNextDay) {
+        console.log(`[FORENSIC-DB] Change Detection (First Planned Day):
+          - OLD Load: ${oldNextDay.training[0]?.loadKg}kg
+          - NEW Load: ${newNextDay.training[0]?.loadKg}kg
+          - Mutation Applied: ${oldNextDay.training[0]?.loadKg !== newNextDay.training[0]?.loadKg}`);
+      }
     }
 
-    // PERSIST MUTATED STATE
-    const success = await saveStateToSupabase(userId, state);
+    // 2. PERSIST
+    const stateToSave = { ...state, lastSavedAt: requestTime };
+    const success = await saveStateToSupabase(userId, stateToSave);
 
     if (!success) {
-      console.error(`[FORENSIC-DB] UPDATE FAILED for user ${userId}`);
-      return NextResponse.json(
-        { error: "Failed to save state" },
-        { status: 500 }
-      );
+      console.error(`[FORENSIC-DB] PERSISTENCE FAILED`);
+      return NextResponse.json({ error: "Save failed" }, { status: 500 });
     }
 
-    // VERIFY MUTATION (RE-FETCH)
+    // 3. VERIFY: Read back immediately to ensure the DB actually holds the new value
     const verifiedState = await loadStateFromSupabase(userId);
-    if (verifiedState) {
-       console.log(`[FORENSIC-DB] Mutation Verified. New Version Timestamp: ${verifiedState.lastSavedAt}`);
-       console.log(`[FORENSIC-DB] New Cursor: W${verifiedState.programCursor?.weekIndex} D${verifiedState.programCursor?.dayIndex}`);
+    const verifiedTime = verifiedState?.lastSavedAt;
+
+    if (verifiedTime === requestTime) {
+      console.log(`[FORENSIC-DB] VERIFICATION SUCCESS: DB matches mutation at ${verifiedTime}`);
+    } else {
+      console.error(`[FORENSIC-DB] VERIFICATION FAILURE: Stale read! Expected ${requestTime}, got ${verifiedTime}`);
     }
 
-    return NextResponse.json({
-      success: true,
-      updatedAt: new Date().toISOString()
-    });
+    console.log(`[FORENSIC-DB] === TRANSACTION END ===\n`);
+
+    return NextResponse.json({ success: true, updatedAt: requestTime });
   } catch (err) {
-    console.error("[FORENSIC-DB] Critical Error:", err);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    console.error("[FORENSIC-DB] FATAL ERROR:", err);
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

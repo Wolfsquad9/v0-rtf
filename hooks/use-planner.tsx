@@ -110,6 +110,11 @@ export const PlannerProvider = ({ children }: { children: ReactNode }) => {
       }
 
       if (loadedState) {
+        // Migration: Ensure programCursor exists
+        if (!loadedState.programCursor) {
+          loadedState.programCursor = { weekIndex: 0, dayIndex: 0 }
+        }
+
         // Temporal Resolution
         const today = new Date()
         let updated = false
@@ -209,6 +214,7 @@ export const PlannerProvider = ({ children }: { children: ReactNode }) => {
       // Cursor Advancement & Adaptive Progression
       if (!wasCompleted && updates.status === "COMPLETED") {
         console.log(`[HOOK] Session Completed: Week ${weekIndex}, Day ${dayIndex}. Triggering Adaptation Chain.`);
+        
         // Advance Cursor
         let nextW = weekIndex
         let nextD = dayIndex + 1
