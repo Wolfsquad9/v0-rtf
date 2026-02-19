@@ -1,8 +1,10 @@
-import html2canvas from "html2canvas"
-import jsPDF from "jspdf"
-
 export async function exportToPDF() {
   try {
+    const html2canvasModule = await import("html2canvas")
+    const html2canvas = html2canvasModule.default
+    const jsPDFModule = await import("jspdf")
+    const jsPDF = jsPDFModule.default
+
     const element = document.getElementById("planner-content")
     if (!element) {
       throw new Error("Planner content not found")
