@@ -21,7 +21,7 @@ export const PlannerLayout: React.FC<PlannerLayoutProps> = ({ children }) => {
   }, [])
 
   return (
-    <div className="min-h-screen bg-background flex flex-col font-sans selection:bg-primary selection:text-primary-foreground antialiased">
+    <div className="min-h-screen bg-background flex flex-col font-sans antialiased">
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex flex-col gap-3 md:flex-row md:items-center md:justify-between px-4 py-4 md:px-8 md:py-3 max-w-5xl mx-auto">
           <div className="flex items-center gap-3">
