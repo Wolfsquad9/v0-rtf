@@ -42,6 +42,15 @@ const hadConsecutiveSlightOvershoots = (history: CompletedSessionSnapshot[]): bo
   return lastTwo.every((session) => isSlightOvershoot(session.actualRpe))
 }
 
+
+const resolveSessionRpe = (exercise: Exercise, dayRpe?: number): number | undefined => {
+  const typedActual = typeof exercise.actualRpe === "number" ? exercise.actualRpe : undefined
+  const legacyPerExercise = typeof (exercise as any).rpe === "number" ? (exercise as any).rpe : undefined
+  const sessionLevel = typeof dayRpe === "number" ? dayRpe : undefined
+
+  return typedActual ?? legacyPerExercise ?? sessionLevel
+}
+
 /**
  * Pure deterministic weight progression function.
  *
@@ -133,7 +142,7 @@ const collectExerciseHistory = (
           weightKg: ex.loadKg || 0,
           reps: ex.actualReps || ex.reps,
           repRange: { min: ex.reps, max: ex.reps },
-          actualRpe: ex.actualRpe,
+          actualRpe: resolveSessionRpe(ex, day.rpe),
         })
       }
     }
@@ -210,7 +219,7 @@ export const projectFutureSessions = (
           currentWeightKg: matchingEx.loadKg || 0,
           reps: matchingEx.actualReps || matchingEx.reps,
           repRange,
-          actualRpe: matchingEx.actualRpe,
+          actualRpe: resolveSessionRpe(matchingEx, completedDay.rpe),
           progressionModel: resolveProgressionModel(framework),
           history,
         })
@@ -245,14 +254,14 @@ export const generateNextSession = (
       currentWeightKg: ex.loadKg || 0,
       reps: ex.actualReps || ex.reps,
       repRange,
-      actualRpe: ex.actualRpe,
+      actualRpe: resolveSessionRpe(ex),
       progressionModel: resolveProgressionModel(framework),
       history: [
         {
           weightKg: ex.loadKg || 0,
           reps: ex.actualReps || ex.reps,
           repRange,
-          actualRpe: ex.actualRpe,
+          actualRpe: resolveSessionRpe(ex),
         },
       ],
     })
