@@ -1,8 +1,149 @@
-import { TrainingFramework, RPE, Exercise, PlannerState, DayEntry } from "../types/planner"
+import { TrainingFramework, RPE, Exercise, PlannerState } from "../types/planner"
 import { IntensityStatus, FRAMEWORK_CONFIGS, GeneratedExercise, GeneratedSession } from "../types/progression"
 
+const MIN_WEIGHT_KG = 0
+const MAX_WEIGHT_KG = 500
+const OPTIMAL_ZONE_MAX = 8.5
+
+type ProgressionModel = "powerlifting" | "hypertrophy" | "default"
+
+export interface CompletedSessionSnapshot {
+  weightKg: number
+  reps: number
+  repRange: { min: number; max: number }
+  actualRpe?: number | null
+}
+
+export interface CalculateNextWeightInput {
+  currentWeightKg: number
+  reps: number
+  repRange: { min: number; max: number }
+  actualRpe?: number | null
+  progressionModel: ProgressionModel
+  history?: CompletedSessionSnapshot[]
+}
+
+const clampWeight = (weightKg: number): number => {
+  if (!Number.isFinite(weightKg)) return MIN_WEIGHT_KG
+  return Math.min(MAX_WEIGHT_KG, Math.max(MIN_WEIGHT_KG, Number(weightKg.toFixed(2))))
+}
+
+const applyPercent = (weightKg: number, minPct: number, maxPct: number): number => {
+  const midpoint = (minPct + maxPct) / 2
+  return weightKg * (1 + midpoint)
+}
+
+const isSlightOvershoot = (rpe?: number | null): boolean =>
+  typeof rpe === "number" && rpe > OPTIMAL_ZONE_MAX && rpe < 9.5
+
+const hadConsecutiveSlightOvershoots = (history: CompletedSessionSnapshot[]): boolean => {
+  if (history.length < 2) return false
+  const lastTwo = history.slice(-2)
+  return lastTwo.every((session) => isSlightOvershoot(session.actualRpe))
+}
+
 /**
- * Deterministic RPE Interpretation
+ * Pure deterministic weight progression function.
+ *
+ * Rules:
+ * - Optimal stimulus zone: RPE 7.5-8.5
+ * - Missing RPE or first session: maintain weight
+ * - <=7: increase load (powerlifting +2.5kg, hypertrophy +2.5%)
+ * - 7-8.5: maintain; only increase when reps hit top range and RPE <=8
+ * - 8.5-9.5: maintain; reduce 2.5% if two consecutive slight overshoots
+ * - >=9.5: reduce load (powerlifting -2.5kg, hypertrophy -4%)
+ *
+ * Example I/O:
+ * - {100kg, rpe:6.5, model:"powerlifting"} -> 102.5kg
+ * - {100kg, reps:12, repRange:8-12, rpe:8, model:"hypertrophy"} -> 102.5kg
+ * - {100kg, rpe:9.7, model:"powerlifting"} -> 97.5kg
+ */
+export const calculateNextWeight = ({
+  currentWeightKg,
+  reps,
+  repRange,
+  actualRpe,
+  progressionModel,
+  history = [],
+}: CalculateNextWeightInput): number => {
+  const current = clampWeight(currentWeightKg)
+
+  if (typeof actualRpe !== "number" || history.length === 0) {
+    return current
+  }
+
+  if (actualRpe <= 7) {
+    if (progressionModel === "powerlifting") {
+      return clampWeight(current + 2.5)
+    }
+    return clampWeight(applyPercent(current, 0.02, 0.03))
+  }
+
+  if (actualRpe > 7 && actualRpe <= OPTIMAL_ZONE_MAX) {
+    const hitTopRange = reps >= repRange.max
+    if (hitTopRange && actualRpe <= 8) {
+      if (progressionModel === "powerlifting") {
+        return clampWeight(current + 2.5)
+      }
+      return clampWeight(applyPercent(current, 0.02, 0.03))
+    }
+    return current
+  }
+
+  if (actualRpe > OPTIMAL_ZONE_MAX && actualRpe < 9.5) {
+    if (hadConsecutiveSlightOvershoots(history)) {
+      return clampWeight(current * (1 - 0.025))
+    }
+    return current
+  }
+
+  if (actualRpe >= 9.5) {
+    if (progressionModel === "powerlifting") {
+      return clampWeight(current - 2.5)
+    }
+    return clampWeight(current * (1 - 0.04))
+  }
+
+  return current
+}
+
+const resolveProgressionModel = (framework: TrainingFramework): ProgressionModel => {
+  if (framework === TrainingFramework.POWERLIFTING) return "powerlifting"
+  if (framework === TrainingFramework.HYPERTROPHY) return "hypertrophy"
+  return "default"
+}
+
+const collectExerciseHistory = (
+  state: PlannerState,
+  movementPattern: Exercise["movementPattern"],
+  upToWeekIndex: number,
+  upToDayIndex: number,
+): CompletedSessionSnapshot[] => {
+  const sessions: CompletedSessionSnapshot[] = []
+
+  for (let w = 0; w <= upToWeekIndex; w++) {
+    const maxDay = w === upToWeekIndex ? upToDayIndex : 6
+    for (let d = 0; d <= maxDay; d++) {
+      const day = state.weeks[w]?.days[d]
+      if (!day || day.status !== "COMPLETED") continue
+
+      for (const ex of day.training) {
+        if (ex.movementPattern !== movementPattern) continue
+        sessions.push({
+          weightKg: ex.loadKg || 0,
+          reps: ex.actualReps || ex.reps,
+          repRange: { min: ex.reps, max: ex.reps },
+          actualRpe: ex.actualRpe,
+        })
+      }
+    }
+  }
+
+  return sessions
+}
+
+/**
+ * Legacy helper kept for compatibility.
  */
 export const interpretRpe = (actual: RPE, target: RPE): IntensityStatus => {
   if (actual < target) return "UNDER"
@@ -11,104 +152,46 @@ export const interpretRpe = (actual: RPE, target: RPE): IntensityStatus => {
 }
 
 /**
- * Core Adaptive Progression Logic
- * Calculates the next prescription based on prescribed vs actual performance
+ * Legacy API wrapper around calculateNextWeight.
  */
 export const calculateNextPrescription = (
   framework: TrainingFramework,
   prescribed: { load: number; reps: number; rpe: RPE },
-  actual: { load: number; reps: number; rpe: RPE }
+  actual: { load: number; reps: number; rpe: RPE },
 ): { load: number; reps: number; rpe: RPE; sets?: number } => {
-  const config = FRAMEWORK_CONFIGS[framework]
-  
-  // Performance Classification
-  const isUnderperforming = actual.rpe > config.targetRpe || actual.reps < prescribed.reps
-  const isOverperforming = actual.rpe < config.targetRpe && actual.reps >= prescribed.reps
-  
-  const classification = isOverperforming ? "OVERPERFORM" : isUnderperforming ? "UNDERPERFORM" : "ON_TARGET"
-  
-  let result: { load: number; reps: number; rpe: RPE; sets?: number }
+  const nextLoad = calculateNextWeight({
+    currentWeightKg: actual.load,
+    reps: actual.reps,
+    repRange: FRAMEWORK_CONFIGS[framework].repRange,
+    actualRpe: actual.rpe,
+    progressionModel: resolveProgressionModel(framework),
+    history: [{
+      weightKg: actual.load,
+      reps: actual.reps,
+      repRange: FRAMEWORK_CONFIGS[framework].repRange,
+      actualRpe: actual.rpe,
+    }],
+  })
 
-  switch (framework) {
-    case TrainingFramework.STRENGTH_LINEAR:
-      if (isOverperforming) {
-        result = { load: actual.load + (config.loadIncrementKg * 2), reps: prescribed.reps, rpe: config.targetRpe }
-      } else if (isUnderperforming) {
-        const newLoad = actual.reps < prescribed.reps 
-          ? Math.max(0, actual.load - config.loadIncrementKg)
-          : actual.load
-        result = { load: newLoad, reps: prescribed.reps, rpe: config.targetRpe }
-      } else {
-        result = { load: actual.load + config.loadIncrementKg, reps: prescribed.reps, rpe: config.targetRpe }
-      }
-      break
-
-    case TrainingFramework.HYPERTROPHY:
-      if (isOverperforming) {
-        if (actual.reps >= config.repRange.max) {
-          result = { load: actual.load + config.loadIncrementKg, reps: config.repRange.min, rpe: config.targetRpe }
-        } else {
-          result = { load: actual.load, reps: Math.min(actual.reps + 2, config.repRange.max), rpe: config.targetRpe }
-        }
-      } else if (isUnderperforming) {
-        result = { load: actual.load, reps: Math.max(actual.reps - 1, config.repRange.min), rpe: config.targetRpe }
-      } else {
-        result = { load: actual.load, reps: actual.reps, rpe: config.targetRpe }
-      }
-      break
-
-    case TrainingFramework.POWERLIFTING:
-      if (isOverperforming) {
-        result = { load: actual.load + 2.5, reps: prescribed.reps, rpe: config.targetRpe }
-      } else if (isUnderperforming) {
-        result = { load: Math.max(0, actual.load - 2.5), reps: prescribed.reps, rpe: config.targetRpe }
-      } else {
-        result = { load: actual.load + 1, reps: prescribed.reps, rpe: config.targetRpe }
-      }
-      break
-
-    case TrainingFramework.STRENGTH_CONDITIONING:
-      if (isOverperforming) {
-        result = { load: actual.load + 2, reps: prescribed.reps, rpe: config.targetRpe }
-      } else if (isUnderperforming) {
-        result = { load: actual.load, reps: prescribed.reps, rpe: config.targetRpe }
-      } else {
-        result = { load: actual.load, reps: prescribed.reps, rpe: config.targetRpe }
-      }
-      break
-
-    default:
-      result = { load: actual.load, reps: prescribed.reps, rpe: prescribed.rpe }
+  return {
+    load: nextLoad,
+    reps: prescribed.reps,
+    rpe: prescribed.rpe,
   }
-
-  // FORENSIC LOGGING
-  console.log(`[FORENSIC-ADAPT] Chain Trace:
-    - Framework: ${framework}
-    - Prescribed: ${prescribed.load}kg x ${prescribed.reps} @ RPE ${prescribed.rpe}
-    - Actual: ${actual.load}kg x ${actual.reps} @ RPE ${actual.rpe}
-    - Classification: ${classification}
-    - Computed Result: ${result.load}kg x ${result.reps} @ RPE ${result.rpe}`);
-
-  return result
 }
 
-/**
- * Recalculate future sessions based on completed performance
- */
 export const projectFutureSessions = (
   state: PlannerState,
   weekIndex: number,
-  dayIndex: number
+  dayIndex: number,
 ): PlannerState => {
   const completedDay = state.weeks[weekIndex].days[dayIndex]
   const framework = state.framework
   const newWeeks = [...state.weeks]
 
-  console.log(`[FORENSIC-PROJ] Triggered for Week ${weekIndex} Day ${dayIndex}. Scanning for future exposures...`);
-
   let projectionsCount = 0
   for (let w = weekIndex; w < newWeeks.length; w++) {
-    for (let d = (w === weekIndex ? dayIndex + 1 : 0); d < 7; d++) {
+    for (let d = w === weekIndex ? dayIndex + 1 : 0; d < 7; d++) {
       if (projectionsCount >= 2) break
 
       const futureDay = newWeeks[w].days[d]
@@ -116,35 +199,32 @@ export const projectFutureSessions = (
 
       const updatedTraining = futureDay.training.map((futureEx) => {
         const matchingEx = completedDay.training.find(
-          (ce) => ce.movementPattern === futureEx.movementPattern
+          (ce) => ce.movementPattern === futureEx.movementPattern,
         )
 
-        if (matchingEx) {
-          // CALLING DETERMINISTIC ENGINE (Line 107 approx)
-          const prescription = calculateNextPrescription(
-            framework,
-            { load: matchingEx.loadKg || 0, reps: matchingEx.reps, rpe: matchingEx.targetRpe || 8 },
-            { load: matchingEx.loadKg || 0, reps: matchingEx.actualReps || matchingEx.reps, rpe: matchingEx.actualRpe || 0 }
-          )
-          
-          return { 
-            ...futureEx, 
-            loadKg: prescription.load, 
-            reps: prescription.reps, 
-            targetRpe: prescription.rpe,
-            sets: prescription.sets || futureEx.sets
-          }
+        if (!matchingEx) return futureEx
+
+        const repRange = FRAMEWORK_CONFIGS[framework].repRange
+        const history = collectExerciseHistory(state, matchingEx.movementPattern, weekIndex, dayIndex)
+        const nextLoad = calculateNextWeight({
+          currentWeightKg: matchingEx.loadKg || 0,
+          reps: matchingEx.actualReps || matchingEx.reps,
+          repRange,
+          actualRpe: matchingEx.actualRpe,
+          progressionModel: resolveProgressionModel(framework),
+          history,
+        })
+
+        return {
+          ...futureEx,
+          loadKg: nextLoad,
+          reps: futureEx.reps,
         }
-        return futureEx
       })
 
-      console.log(`[FORENSIC-PROJ] Mutating Future Session: W${w}D${d}. Exercises updated: ${updatedTraining.length}`);
-      
       newWeeks[w] = {
         ...newWeeks[w],
-        days: newWeeks[w].days.map((day, idx) => 
-          idx === d ? { ...day, training: updatedTraining } : day
-        )
+        days: newWeeks[w].days.map((day, idx) => (idx === d ? { ...day, training: updatedTraining } : day)),
       }
       projectionsCount++
     }
@@ -156,22 +236,30 @@ export const projectFutureSessions = (
 
 export const generateNextSession = (
   previousExercises: Exercise[],
-  framework: TrainingFramework
+  framework: TrainingFramework,
 ): GeneratedSession => {
-  const rules = FRAMEWORK_CONFIGS[framework]
-  
+  const repRange = FRAMEWORK_CONFIGS[framework].repRange
+
   const nextExercises: GeneratedExercise[] = previousExercises.map((ex) => {
-    const prescription = calculateNextPrescription(
-      framework,
-      { load: ex.loadKg || 0, reps: ex.reps, rpe: ex.targetRpe || 8 },
-      { load: ex.loadKg || 0, reps: ex.actualReps || ex.reps, rpe: ex.actualRpe || 0 }
-    )
-    
+    const nextLoad = calculateNextWeight({
+      currentWeightKg: ex.loadKg || 0,
+      reps: ex.actualReps || ex.reps,
+      repRange,
+      actualRpe: ex.actualRpe,
+      progressionModel: resolveProgressionModel(framework),
+      history: [
+        {
+          weightKg: ex.loadKg || 0,
+          reps: ex.actualReps || ex.reps,
+          repRange,
+          actualRpe: ex.actualRpe,
+        },
+      ],
+    })
+
     return {
       ...ex,
-      loadKg: prescription.load,
-      reps: prescription.reps,
-      targetRpe: prescription.rpe,
+      loadKg: nextLoad,
       actualRpe: undefined,
       actualReps: undefined,
       actualSets: undefined,
