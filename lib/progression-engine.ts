@@ -6,6 +6,7 @@ const MAX_WEIGHT_KG = 500
 const OPTIMAL_ZONE_MAX = 8.5
 
 type ProgressionModel = "powerlifting" | "hypertrophy" | "default"
+type ProgressionDirection = "UP" | "DOWN" | "HOLD"
 
 export interface CompletedSessionSnapshot {
   weightKg: number
@@ -28,11 +29,6 @@ const clampWeight = (weightKg: number): number => {
   return Math.min(MAX_WEIGHT_KG, Math.max(MIN_WEIGHT_KG, Number(weightKg.toFixed(2))))
 }
 
-const applyPercent = (weightKg: number, minPct: number, maxPct: number): number => {
-  const midpoint = (minPct + maxPct) / 2
-  return weightKg * (1 + midpoint)
-}
-
 const isSlightOvershoot = (rpe?: number | null): boolean =>
   typeof rpe === "number" && rpe > OPTIMAL_ZONE_MAX && rpe < 9.5
 
@@ -41,7 +37,6 @@ const hadConsecutiveSlightOvershoots = (history: CompletedSessionSnapshot[]): bo
   const lastTwo = history.slice(-2)
   return lastTwo.every((session) => isSlightOvershoot(session.actualRpe))
 }
-
 
 const resolveSessionRpe = (exercise: Exercise, sessionRpe?: number): number | null => {
   const typedActual = typeof exercise.actualRpe === "number" ? exercise.actualRpe : null
@@ -62,21 +57,31 @@ const buildCompletedSnapshot = (
   actualRpe: resolveSessionRpe(exercise, sessionRpe),
 })
 
+const getFrameworkIncrement = (progressionModel: ProgressionModel): number => {
+  if (progressionModel === "powerlifting") {
+    return FRAMEWORK_CONFIGS[TrainingFramework.POWERLIFTING].loadIncrementKg
+  }
+  if (progressionModel === "hypertrophy") {
+    return FRAMEWORK_CONFIGS[TrainingFramework.HYPERTROPHY].loadIncrementKg
+  }
+  return FRAMEWORK_CONFIGS[TrainingFramework.STRENGTH_LINEAR].loadIncrementKg
+}
+
+const applySteppedLoadChange = (
+  currentWeightKg: number,
+  direction: ProgressionDirection,
+  stepKg: number,
+): number => {
+  const safeStep = stepKg > 0 ? stepKg : 1
+  const snappedCurrent = Math.round(currentWeightKg / safeStep) * safeStep
+  const stepDelta = direction === "UP" ? safeStep : direction === "DOWN" ? -safeStep : 0
+  const nextUnclamped = snappedCurrent + stepDelta
+  const clamped = clampWeight(nextUnclamped)
+  return Number((Math.round(clamped / safeStep) * safeStep).toFixed(2))
+}
+
 /**
  * Pure deterministic weight progression function.
- *
- * Rules:
- * - Optimal stimulus zone: RPE 7.5-8.5
- * - Missing RPE or first session: maintain weight
- * - <=7: increase load (powerlifting +2.5kg, hypertrophy +2.5%)
- * - 7-8.5: maintain; only increase when reps hit top range and RPE <=8
- * - 8.5-9.5: maintain; reduce 2.5% if two consecutive slight overshoots
- * - >=9.5: reduce load (powerlifting -2.5kg, hypertrophy -4%)
- *
- * Example I/O:
- * - {100kg, rpe:6.5, model:"powerlifting"} -> 102.5kg
- * - {100kg, reps:12, repRange:8-12, rpe:8, model:"hypertrophy"} -> 102.5kg
- * - {100kg, rpe:9.7, model:"powerlifting"} -> 97.5kg
  */
 export const calculateNextWeight = ({
   currentWeightKg,
@@ -87,44 +92,24 @@ export const calculateNextWeight = ({
   history = [],
 }: CalculateNextWeightInput): number => {
   const current = clampWeight(currentWeightKg)
+  const increment = getFrameworkIncrement(progressionModel)
 
-  if (actualRpe === null || history.length === 0) {
-    return current
-  }
+  let direction: ProgressionDirection = "HOLD"
 
-  if (actualRpe <= 7) {
-    if (progressionModel === "powerlifting") {
-      return clampWeight(current + 2.5)
+  if (actualRpe !== null && history.length > 0) {
+    if (actualRpe <= 7) {
+      direction = "UP"
+    } else if (actualRpe > 7 && actualRpe <= OPTIMAL_ZONE_MAX) {
+      const hitTopRange = reps >= repRange.max
+      direction = hitTopRange && actualRpe <= 8 ? "UP" : "HOLD"
+    } else if (actualRpe > OPTIMAL_ZONE_MAX && actualRpe < 9.5) {
+      direction = hadConsecutiveSlightOvershoots(history) ? "DOWN" : "HOLD"
+    } else if (actualRpe >= 9.5) {
+      direction = "DOWN"
     }
-    return clampWeight(applyPercent(current, 0.02, 0.03))
   }
 
-  if (actualRpe > 7 && actualRpe <= OPTIMAL_ZONE_MAX) {
-    const hitTopRange = reps >= repRange.max
-    if (hitTopRange && actualRpe <= 8) {
-      if (progressionModel === "powerlifting") {
-        return clampWeight(current + 2.5)
-      }
-      return clampWeight(applyPercent(current, 0.02, 0.03))
-    }
-    return current
-  }
-
-  if (actualRpe > OPTIMAL_ZONE_MAX && actualRpe < 9.5) {
-    if (hadConsecutiveSlightOvershoots(history)) {
-      return clampWeight(current * (1 - 0.025))
-    }
-    return current
-  }
-
-  if (actualRpe >= 9.5) {
-    if (progressionModel === "powerlifting") {
-      return clampWeight(current - 2.5)
-    }
-    return clampWeight(current * (1 - 0.04))
-  }
-
-  return current
+  return applySteppedLoadChange(current, direction, increment)
 }
 
 const resolveProgressionModel = (framework: TrainingFramework): ProgressionModel => {
