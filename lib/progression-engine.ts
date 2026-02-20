@@ -11,14 +11,14 @@ export interface CompletedSessionSnapshot {
   weightKg: number
   reps: number
   repRange: { min: number; max: number }
-  actualRpe?: number | null
+  actualRpe: number | null
 }
 
 export interface CalculateNextWeightInput {
   currentWeightKg: number
   reps: number
   repRange: { min: number; max: number }
-  actualRpe?: number | null
+  actualRpe: number | null
   progressionModel: ProgressionModel
   history?: CompletedSessionSnapshot[]
 }
@@ -43,13 +43,24 @@ const hadConsecutiveSlightOvershoots = (history: CompletedSessionSnapshot[]): bo
 }
 
 
-const resolveSessionRpe = (exercise: Exercise, dayRpe?: number): number | undefined => {
-  const typedActual = typeof exercise.actualRpe === "number" ? exercise.actualRpe : undefined
-  const legacyPerExercise = typeof (exercise as any).rpe === "number" ? (exercise as any).rpe : undefined
-  const sessionLevel = typeof dayRpe === "number" ? dayRpe : undefined
+const resolveSessionRpe = (exercise: Exercise, sessionRpe?: number): number | null => {
+  const typedActual = typeof exercise.actualRpe === "number" ? exercise.actualRpe : null
+  const legacyPerExercise = typeof (exercise as any).rpe === "number" ? (exercise as any).rpe : null
+  const sessionLevel = typeof sessionRpe === "number" ? sessionRpe : null
 
   return typedActual ?? legacyPerExercise ?? sessionLevel
 }
+
+const buildCompletedSnapshot = (
+  exercise: Exercise,
+  repRange: { min: number; max: number },
+  sessionRpe?: number,
+): CompletedSessionSnapshot => ({
+  weightKg: exercise.loadKg || 0,
+  reps: exercise.actualReps || exercise.reps,
+  repRange,
+  actualRpe: resolveSessionRpe(exercise, sessionRpe),
+})
 
 /**
  * Pure deterministic weight progression function.
@@ -77,7 +88,7 @@ export const calculateNextWeight = ({
 }: CalculateNextWeightInput): number => {
   const current = clampWeight(currentWeightKg)
 
-  if (typeof actualRpe !== "number" || history.length === 0) {
+  if (actualRpe === null || history.length === 0) {
     return current
   }
 
@@ -138,12 +149,7 @@ const collectExerciseHistory = (
 
       for (const ex of day.training) {
         if (ex.movementPattern !== movementPattern) continue
-        sessions.push({
-          weightKg: ex.loadKg || 0,
-          reps: ex.actualReps || ex.reps,
-          repRange: { min: ex.reps, max: ex.reps },
-          actualRpe: resolveSessionRpe(ex, day.rpe),
-        })
+        sessions.push(buildCompletedSnapshot(ex, { min: ex.reps, max: ex.reps }, day.rpe))
       }
     }
   }
@@ -214,12 +220,13 @@ export const projectFutureSessions = (
         if (!matchingEx) return futureEx
 
         const repRange = FRAMEWORK_CONFIGS[framework].repRange
+        const completedSnapshot = buildCompletedSnapshot(matchingEx, repRange, completedDay.rpe)
         const history = collectExerciseHistory(state, matchingEx.movementPattern, weekIndex, dayIndex)
         const nextLoad = calculateNextWeight({
-          currentWeightKg: matchingEx.loadKg || 0,
-          reps: matchingEx.actualReps || matchingEx.reps,
-          repRange,
-          actualRpe: resolveSessionRpe(matchingEx, completedDay.rpe),
+          currentWeightKg: completedSnapshot.weightKg,
+          reps: completedSnapshot.reps,
+          repRange: completedSnapshot.repRange,
+          actualRpe: completedSnapshot.actualRpe,
           progressionModel: resolveProgressionModel(framework),
           history,
         })
@@ -250,20 +257,14 @@ export const generateNextSession = (
   const repRange = FRAMEWORK_CONFIGS[framework].repRange
 
   const nextExercises: GeneratedExercise[] = previousExercises.map((ex) => {
+    const snapshot = buildCompletedSnapshot(ex, repRange)
     const nextLoad = calculateNextWeight({
-      currentWeightKg: ex.loadKg || 0,
-      reps: ex.actualReps || ex.reps,
-      repRange,
-      actualRpe: resolveSessionRpe(ex),
+      currentWeightKg: snapshot.weightKg,
+      reps: snapshot.reps,
+      repRange: snapshot.repRange,
+      actualRpe: snapshot.actualRpe,
       progressionModel: resolveProgressionModel(framework),
-      history: [
-        {
-          weightKg: ex.loadKg || 0,
-          reps: ex.actualReps || ex.reps,
-          repRange,
-          actualRpe: resolveSessionRpe(ex),
-        },
-      ],
+      history: [snapshot],
     })
 
     return {
