@@ -1,5 +1,6 @@
 import type { PlannerState } from "@/types/planner"
 import { logError } from "@/lib/error-handler"
+import { supabase } from "@/lib/supabase-client"
 
 const STORAGE_KEY = "rtf_planner_state_v1"
 const LAST_SYNC_KEY = "rtf_planner_last_sync_v1"
@@ -39,21 +40,31 @@ export const saveState = (state: PlannerState): void => {
     localStorage.setItem(STORAGE_KEY, serialized)
 
     // Try to sync to Supabase in background (non-blocking)
-    console.log("[STORAGE] Initiating background sync...")
-
-    fetch("/api/db/save-state", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ state }),
-    })
-      .then(async (res) => {
-        if (res.ok) {
-          localStorage.setItem(LAST_SYNC_KEY, new Date().toISOString())
-          console.log("[STORAGE] Background sync successful")
-        } else {
-          const error = await res.json()
-          console.warn("[STORAGE] Background sync failed:", error)
+    supabase.auth.getSession()
+      .then(({ data }) => {
+        const token = data.session?.access_token
+        if (!token) {
+          console.log("[STORAGE] No authenticated session. Running local-only mode.")
+          return
         }
+
+        return fetch("/api/db/save-state", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ state }),
+        })
+          .then(async (res) => {
+            if (res.ok) {
+              localStorage.setItem(LAST_SYNC_KEY, new Date().toISOString())
+              console.log("[STORAGE] Background sync successful")
+            } else {
+              const error = await res.json()
+              console.warn("[STORAGE] Background sync failed:", error)
+            }
+          })
       })
       .catch((err) => {
         console.warn("[Storage] Background sync network error:", err)
@@ -71,24 +82,31 @@ export const loadStateFromDatabase = async (): Promise<PlannerState | null> => {
   if (typeof window === "undefined") return null
 
   try {
-    console.log("[STORAGE] Fetching state from DB...")
-    const res = await fetch("/api/db/load-state")
+    const { data } = await supabase.auth.getSession()
+    const token = data.session?.access_token
+
+    if (!token) {
+      console.log("[STORAGE] No authenticated session. Running local-only mode.")
+      return null
+    }
+
+    const res = await fetch("/api/db/load-state", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
 
     if (!res.ok) {
       console.warn("[STORAGE] DB Load failed:", res.status)
       return null
     }
 
-    const data = await res.json()
-    const dbState = data.state
+    const payload = await res.json()
+    const dbState = payload.state
 
     if (dbState) {
-      console.log(`[STORAGE] DB Load success. Version: ${dbState.lastSavedAt}`)
-      // Also update localStorage with latest from DB to keep them in sync
       localStorage.setItem(STORAGE_KEY, JSON.stringify(dbState))
       localStorage.setItem(LAST_SYNC_KEY, new Date().toISOString())
-    } else {
-      console.log("[STORAGE] No state found in DB")
     }
 
     return dbState
