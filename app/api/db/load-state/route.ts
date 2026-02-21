@@ -1,16 +1,11 @@
 import { NextResponse } from "next/server";
-import { loadStateFromSupabase } from "@/lib/supabase";
+import { loadStateFromSupabase, getAuthenticatedUserId } from "@/lib/supabase";
 
 export async function GET(req: Request) {
   try {
-    const { searchParams } = new URL(req.url);
-    const userId = searchParams.get("userId");
-
+    const userId = await getAuthenticatedUserId(req);
     if (!userId) {
-      return NextResponse.json(
-        { error: "Missing userId" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const state = await loadStateFromSupabase(userId);

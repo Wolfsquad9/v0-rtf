@@ -18,6 +18,37 @@ function getSupabaseClient() {
   return supabaseClient;
 }
 
+export async function getAuthenticatedUserId(req: Request): Promise<string | null> {
+  if (!supabaseUrl || !supabaseKey) {
+    return null;
+  }
+
+  const authHeader = req.headers.get("authorization") || req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return null;
+  }
+
+  const token = authHeader.slice("Bearer ".length).trim();
+  if (!token) {
+    return null;
+  }
+
+  const authClient = createClient(supabaseUrl, supabaseKey, {
+    global: {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  });
+
+  const { data, error } = await authClient.auth.getUser();
+  if (error || !data?.user?.id) {
+    return null;
+  }
+
+  return data.user.id;
+}
+
 export async function saveStateToSupabase(userId: string, state: any) {
   const client = getSupabaseClient();
   if (!client) return false;
@@ -30,7 +61,7 @@ export async function saveStateToSupabase(userId: string, state: any) {
     }
 
     console.log(`[SUPABASE] Executing UPSERT for user ${userId}...`);
-    
+
     const { data, error } = await client
       .from("planner_state")
       .upsert(

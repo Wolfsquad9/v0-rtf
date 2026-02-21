@@ -1,11 +1,16 @@
 import { NextResponse } from "next/server";
-import { saveStateToSupabase, loadStateFromSupabase } from "@/lib/supabase";
+import { saveStateToSupabase, loadStateFromSupabase, getAuthenticatedUserId } from "@/lib/supabase";
 
 export async function POST(req: Request) {
   try {
-    const { userId, state } = await req.json();
+    const userId = await getAuthenticatedUserId(req);
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    if (!userId || !state) {
+    const { state } = await req.json();
+
+    if (!state) {
       return NextResponse.json({ error: "Missing payload" }, { status: 400 });
     }
 
@@ -15,7 +20,7 @@ export async function POST(req: Request) {
 
     // 1. COMPARISON: Check the next session's load in the current DB vs the incoming payload
     const existingState = await loadStateFromSupabase(userId);
-    
+
     if (existingState) {
       // Find the first non-completed day to verify mutation
       const findFirstPlanned = (s: any) => {

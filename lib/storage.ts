@@ -4,25 +4,13 @@ import { logError } from "@/lib/error-handler"
 const STORAGE_KEY = "rtf_planner_state_v1"
 const LAST_SYNC_KEY = "rtf_planner_last_sync_v1"
 
-// Generate a simple user ID from browser if not authenticated
-function getUserId(): string {
-  if (typeof window === "undefined") return "server"
-  
-  let userId = localStorage.getItem("rtf_user_id")
-  if (!userId) {
-    userId = `user_${Date.now()}_${Math.random().toString(36).substring(7)}`
-    localStorage.setItem("rtf_user_id", userId)
-  }
-  return userId
-}
-
 export const loadState = (): PlannerState | null => {
   if (typeof window === "undefined") return null
   try {
     const serialized = localStorage.getItem(STORAGE_KEY)
     if (!serialized) return null
     const parsed = JSON.parse(serialized)
-    
+
     // Migrations / Fixes
     if (parsed && !parsed.framework) {
       parsed.framework = "STRENGTH_LINEAR"
@@ -33,7 +21,7 @@ export const loadState = (): PlannerState | null => {
     if (parsed && !parsed.programCursor) {
       parsed.programCursor = { weekIndex: 0, dayIndex: 0 }
     }
-    
+
     return parsed as PlannerState
   } catch (e) {
     logError(e, "loadState")
@@ -43,35 +31,33 @@ export const loadState = (): PlannerState | null => {
 
 export const saveState = (state: PlannerState): void => {
   if (typeof window === "undefined") return
-  
+
   try {
     const serialized = JSON.stringify(state)
-    
+
     // Always save to localStorage first (offline draft)
     localStorage.setItem(STORAGE_KEY, serialized)
-    
+
     // Try to sync to Supabase in background (non-blocking)
-    const userId = getUserId()
-    
-    console.log(`[STORAGE] Initiating background sync for user ${userId}...`);
-    
+    console.log("[STORAGE] Initiating background sync...")
+
     fetch("/api/db/save-state", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, state })
+      body: JSON.stringify({ state }),
     })
-    .then(async (res) => {
-      if (res.ok) {
-        localStorage.setItem(LAST_SYNC_KEY, new Date().toISOString());
-        console.log(`[STORAGE] Background sync successful for user ${userId}`);
-      } else {
-        const error = await res.json();
-        console.warn(`[STORAGE] Background sync failed:`, error);
-      }
-    })
-    .catch(err => {
-      console.warn("[Storage] Background sync network error:", err)
-    })
+      .then(async (res) => {
+        if (res.ok) {
+          localStorage.setItem(LAST_SYNC_KEY, new Date().toISOString())
+          console.log("[STORAGE] Background sync successful")
+        } else {
+          const error = await res.json()
+          console.warn("[STORAGE] Background sync failed:", error)
+        }
+      })
+      .catch((err) => {
+        console.warn("[Storage] Background sync network error:", err)
+      })
   } catch (e) {
     logError(e, "saveState")
     if (e instanceof Error && e.message.includes("quota")) {
@@ -83,29 +69,28 @@ export const saveState = (state: PlannerState): void => {
 
 export const loadStateFromDatabase = async (): Promise<PlannerState | null> => {
   if (typeof window === "undefined") return null
-  
+
   try {
-    const userId = getUserId()
-    console.log(`[STORAGE] Fetching state from DB for user ${userId}...`);
-    const res = await fetch(`/api/db/load-state?userId=${encodeURIComponent(userId)}`)
-    
+    console.log("[STORAGE] Fetching state from DB...")
+    const res = await fetch("/api/db/load-state")
+
     if (!res.ok) {
       console.warn("[STORAGE] DB Load failed:", res.status)
       return null
     }
-    
+
     const data = await res.json()
     const dbState = data.state
-    
+
     if (dbState) {
-      console.log(`[STORAGE] DB Load success. Version: ${dbState.lastSavedAt}`);
+      console.log(`[STORAGE] DB Load success. Version: ${dbState.lastSavedAt}`)
       // Also update localStorage with latest from DB to keep them in sync
       localStorage.setItem(STORAGE_KEY, JSON.stringify(dbState))
       localStorage.setItem(LAST_SYNC_KEY, new Date().toISOString())
     } else {
-      console.log(`[STORAGE] No state found in DB for user ${userId}`);
+      console.log("[STORAGE] No state found in DB")
     }
-    
+
     return dbState
   } catch (e) {
     logError(e, "loadStateFromDatabase")
