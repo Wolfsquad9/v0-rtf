@@ -9,6 +9,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [isLogin, setIsLogin] = useState(true)
   const router = useRouter()
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -16,10 +17,12 @@ export default function LoginPage() {
     setLoading(true)
     setError(null)
 
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+    const { error: authError } = isLogin
+      ? await supabase.auth.signInWithPassword({ email, password })
+      : await supabase.auth.signUp({ email, password })
 
-    if (signInError) {
-      setError(signInError.message)
+    if (authError) {
+      setError(authError.message)
       setLoading(false)
       return
     }
@@ -31,10 +34,12 @@ export default function LoginPage() {
   return (
     <main className="flex min-h-screen items-center justify-center p-6">
       <form onSubmit={onSubmit} className="w-full max-w-sm space-y-4 border p-6">
-        <h1 className="text-lg font-bold">Login</h1>
+        <h1 className="text-lg font-bold">{isLogin ? "Login" : "Sign Up"}</h1>
 
         <div className="space-y-1">
-          <label htmlFor="email" className="text-sm">Email</label>
+          <label htmlFor="email" className="text-sm">
+            Email
+          </label>
           <input
             id="email"
             type="email"
@@ -46,7 +51,9 @@ export default function LoginPage() {
         </div>
 
         <div className="space-y-1">
-          <label htmlFor="password" className="text-sm">Password</label>
+          <label htmlFor="password" className="text-sm">
+            Password
+          </label>
           <input
             id="password"
             type="password"
@@ -60,7 +67,18 @@ export default function LoginPage() {
         {error ? <p className="text-sm text-red-500">{error}</p> : null}
 
         <button type="submit" disabled={loading} className="w-full border px-3 py-2">
-          {loading ? "Signing in..." : "Sign in"}
+          {loading ? "Processing..." : isLogin ? "Login" : "Sign Up"}
+        </button>
+
+        <button
+          type="button"
+          className="w-full text-sm underline"
+          onClick={() => {
+            setIsLogin((prev) => !prev)
+            setError(null)
+          }}
+        >
+          {isLogin ? "Need an account? Sign up" : "Already have an account? Login"}
         </button>
       </form>
     </main>
