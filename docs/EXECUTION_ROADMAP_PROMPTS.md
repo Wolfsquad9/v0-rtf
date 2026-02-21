@@ -239,3 +239,15 @@ Use this exact sequence today:
 5. Run Prompt E for go/no-go decision.
 
 This gives you a deterministic loop from idea → safe release.
+
+---
+
+## 6) Governance Source of Truth
+
+This playbook is governed by:
+- `docs/process/RTF_MASTER_EXECUTION_DOCTRINE.md`
+- `.github/pull_request_template.md`
+- `docs/process/RELEASE_GATE_CHECKLIST.md`
+- `docs/process/WEEKLY_EXECUTION_RHYTHM.md`
+
+If any prompt output conflicts with the doctrine, follow the doctrine.
