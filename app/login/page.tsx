@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase-client"
@@ -9,17 +10,17 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const [isLogin, setIsLogin] = useState(true)
   const router = useRouter()
 
-  const onSubmit = async (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
 
-    const { error: authError } = isLogin
-      ? await supabase.auth.signInWithPassword({ email: email.trim(), password })
-      : await supabase.auth.signUp({ email: email.trim(), password })
+    const { error: authError } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    })
 
     if (authError) {
       setError(authError.message)
@@ -28,13 +29,12 @@ export default function LoginPage() {
     }
 
     router.replace("/")
-    return
   }
 
   return (
     <main className="flex min-h-screen items-center justify-center p-6">
       <form onSubmit={onSubmit} className="w-full max-w-sm space-y-4 border p-6">
-        <h1 className="text-lg font-bold">{isLogin ? "Login" : "Sign Up"}</h1>
+        <h1 className="text-lg font-bold">Login</h1>
 
         <div className="space-y-1">
           <label htmlFor="email" className="text-sm">
@@ -67,19 +67,15 @@ export default function LoginPage() {
         {error ? <p className="text-sm text-red-500">{error}</p> : null}
 
         <button type="submit" disabled={loading} className="w-full border px-3 py-2">
-          {loading ? "Processing..." : isLogin ? "Login" : "Sign Up"}
+          {loading ? "Logging in..." : "Login"}
         </button>
 
-        <button
-          type="button"
-          className="w-full text-sm underline"
-          onClick={() => {
-            setIsLogin((prev) => !prev)
-            setError(null)
-          }}
-        >
-          {isLogin ? "Need an account? Sign up" : "Already have an account? Login"}
-        </button>
+        <p className="text-sm">
+          Don&apos;t have an account?{" "}
+          <Link href="/signup" className="underline">
+            Sign up
+          </Link>
+        </p>
       </form>
     </main>
   )
