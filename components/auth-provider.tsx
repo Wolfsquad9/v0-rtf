@@ -22,11 +22,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true
 
-    supabase.auth.getSession().then(({ data }) => {
+    const init = async () => {
+      const { data } = await supabase.auth.getSession()
       if (!mounted) return
       setSession(data.session)
       setLoading(false)
-    })
+    }
+
+    void init()
 
     const {
       data: { subscription },
@@ -64,10 +67,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   if (loading) {
     return <div className="flex min-h-screen items-center justify-center">Loading...</div>
-  }
-
-  if (!session?.user && pathname !== "/login") {
-    return <div className="flex min-h-screen items-center justify-center">Redirecting to login...</div>
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
