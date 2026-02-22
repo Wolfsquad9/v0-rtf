@@ -18,8 +18,8 @@ export default function LoginPage() {
     setError(null)
 
     const { error: authError } = isLogin
-      ? await supabase.auth.signInWithPassword({ email, password })
-      : await supabase.auth.signUp({ email, password })
+      ? await supabase.auth.signInWithPassword({ email: email.trim(), password })
+      : await supabase.auth.signUp({ email: email.trim(), password })
 
     if (authError) {
       setError(authError.message)
@@ -28,7 +28,7 @@ export default function LoginPage() {
     }
 
     router.replace("/")
-    setLoading(false)
+    return
   }
 
   return (
