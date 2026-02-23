@@ -23,9 +23,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let mounted = true
 
     const init = async () => {
-      const { data } = await supabase.auth.getSession()
+      const { data, error } = await supabase.auth.getSession()
       if (!mounted) return
-      setSession(data.session)
+
+      if (error) {
+        console.error("Session fetch failed:", error)
+        setSession(null)
+        setLoading(false)
+        return
+      }
+
+      if (data.session) {
+        setSession(data.session)
+        setLoading(false)
+        return
+      }
+
+      setSession(null)
       setLoading(false)
     }
 
