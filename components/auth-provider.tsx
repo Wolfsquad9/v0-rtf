@@ -12,6 +12,7 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
+const publicRoutes = ["/login", "/signup"]
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
@@ -60,7 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (loading) return
 
-    if (!session?.user && pathname !== "/login") {
+    if (!session?.user && !publicRoutes.includes(pathname)) {
       router.replace("/login")
       return
     }
