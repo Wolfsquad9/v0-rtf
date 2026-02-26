@@ -1,8 +1,6 @@
 import type { Metadata } from 'next'
 import { Analytics } from '@vercel/analytics/next'
 import { ErrorBoundary } from '@/components/error-boundary'
-import { AuthProvider } from '@/components/auth-provider'
-import { TopBar } from '@/components/top-bar'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -22,12 +20,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="font-sans antialiased">
-        <AuthProvider>
-          <ErrorBoundary>
-            <TopBar />
-            {children}
-          </ErrorBoundary>
-        </AuthProvider>
+        <ErrorBoundary>{children}</ErrorBoundary>
         <Analytics />
       </body>
     </html>
