@@ -1,7 +1,7 @@
 "use client"
 
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
-import { usePathname, useRouter } from "next/navigation"
+import { useRouter } from "next/navigation"
 import type { Session, User } from "@supabase/supabase-js"
 import { supabase } from "@/lib/supabase-client"
 
@@ -13,11 +13,23 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
+const syncAuthCookies = (session: Session | null) => {
+  const secure = typeof window !== "undefined" && window.location.protocol === "https:" ? "; Secure" : ""
+
+  if (!session) {
+    document.cookie = `sb-access-token=; Path=/; Max-Age=0; SameSite=Lax${secure}`
+    document.cookie = `sb-refresh-token=; Path=/; Max-Age=0; SameSite=Lax${secure}`
+    return
+  }
+
+  document.cookie = `sb-access-token=${session.access_token}; Path=/; SameSite=Lax${secure}`
+  document.cookie = `sb-refresh-token=${session.refresh_token}; Path=/; SameSite=Lax${secure}`
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
-  const pathname = usePathname()
 
   useEffect(() => {
     let mounted = true
@@ -29,17 +41,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error) {
         console.error("Session fetch failed:", error)
         setSession(null)
+        syncAuthCookies(null)
         setLoading(false)
         return
       }
 
-      if (data.session) {
-        setSession(data.session)
-        setLoading(false)
-        return
-      }
-
-      setSession(null)
+      setSession(data.session ?? null)
+      syncAuthCookies(data.session ?? null)
       setLoading(false)
     }
 
@@ -49,6 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession)
+      syncAuthCookies(nextSession)
     })
 
     return () => {
@@ -62,13 +71,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (!session?.user) {
       router.replace("/login")
-      return
     }
-
-    if (session?.user && pathname === "/login") {
-      router.replace("/")
-    }
-  }, [loading, pathname, router, session])
+  }, [loading, router, session])
 
   const value = useMemo(
     () => ({
