@@ -13,17 +13,26 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-const syncAuthCookies = (session: Session | null) => {
-  const secure = typeof window !== "undefined" && window.location.protocol === "https:" ? "; Secure" : ""
-
+const syncAuthCookies = async (session: Session | null) => {
   if (!session) {
-    document.cookie = `sb-access-token=; Path=/; Max-Age=0; SameSite=Lax${secure}`
-    document.cookie = `sb-refresh-token=; Path=/; Max-Age=0; SameSite=Lax${secure}`
+    await fetch("/api/auth/session", {
+      method: "DELETE",
+      credentials: "same-origin",
+    })
     return
   }
 
-  document.cookie = `sb-access-token=${session.access_token}; Path=/; SameSite=Lax${secure}`
-  document.cookie = `sb-refresh-token=${session.refresh_token}; Path=/; SameSite=Lax${secure}`
+  await fetch("/api/auth/session", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    credentials: "same-origin",
+    body: JSON.stringify({
+      accessToken: session.access_token,
+      refreshToken: session.refresh_token,
+    }),
+  })
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -41,13 +50,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error) {
         console.error("Session fetch failed:", error)
         setSession(null)
-        syncAuthCookies(null)
+        await syncAuthCookies(null)
         setLoading(false)
         return
       }
 
       setSession(data.session ?? null)
-      syncAuthCookies(data.session ?? null)
+      await syncAuthCookies(data.session ?? null)
       setLoading(false)
     }
 
@@ -57,7 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession)
-      syncAuthCookies(nextSession)
+      void syncAuthCookies(nextSession)
     })
 
     return () => {

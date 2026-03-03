@@ -91,14 +91,14 @@ const setAuthCookies = (
     path: "/",
     sameSite: "lax",
     secure,
-    httpOnly: false,
+    httpOnly: true,
   })
 
   response.cookies.set(REFRESH_COOKIE, refreshToken, {
     path: "/",
     sameSite: "lax",
     secure,
-    httpOnly: false,
+    httpOnly: true,
   })
 }
 
