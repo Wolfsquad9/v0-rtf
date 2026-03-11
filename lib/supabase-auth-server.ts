@@ -40,44 +40,54 @@ const fetchSupabaseUser = async (
   config: SupabaseAuthConfig,
   accessToken: string,
 ): Promise<SupabaseUserResponse | null> => {
-  const response = await fetch(`${config.url}/auth/v1/user`, {
-    method: "GET",
-    headers: buildAuthHeaders(config.anonKey, accessToken),
-    cache: "no-store",
-  })
+  try {
+    const response = await fetch(`${config.url}/auth/v1/user`, {
+      method: "GET",
+      headers: buildAuthHeaders(config.anonKey, accessToken),
+      cache: "no-store",
+    })
 
-  if (!response.ok) {
+    if (!response.ok) {
+      return null
+    }
+
+    const data = (await response.json()) as SupabaseUserResponse
+    return data?.id ? data : null
+  } catch {
+    console.warn("[Auth Middleware] Supabase user lookup failed")
     return null
   }
-
-  const data = (await response.json()) as SupabaseUserResponse
-  return data?.id ? data : null
 }
 
 const refreshSupabaseSession = async (
   config: SupabaseAuthConfig,
   refreshToken: string,
 ): Promise<SupabaseRefreshResponse | null> => {
-  const response = await fetch(`${config.url}/auth/v1/token?grant_type=refresh_token`, {
-    method: "POST",
-    headers: {
-      ...buildAuthHeaders(config.anonKey),
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ refresh_token: refreshToken }),
-    cache: "no-store",
-  })
+  try {
+    const response = await fetch(`${config.url}/auth/v1/token?grant_type=refresh_token`, {
+      method: "POST",
+      headers: {
+        ...buildAuthHeaders(config.anonKey),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+      cache: "no-store",
+    })
 
-  if (!response.ok) {
+    if (!response.ok) {
+      return null
+    }
+
+    const data = (await response.json()) as SupabaseRefreshResponse
+    if (!data.access_token || !data.refresh_token) {
+      return null
+    }
+
+    return data
+  } catch {
+    console.warn("[Auth Middleware] Supabase token refresh failed")
     return null
   }
-
-  const data = (await response.json()) as SupabaseRefreshResponse
-  if (!data.access_token || !data.refresh_token) {
-    return null
-  }
-
-  return data
 }
 
 const setAuthCookies = (
