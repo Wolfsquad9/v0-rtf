@@ -22,11 +22,11 @@ Before making ANY changes, perform a complete diagnostic:
 
 2. **Output a diagnostic table** in this exact format:
 
-```
+\`\`\`
 | Weakness | Fix Required | Impact (1-10) | File(s) Affected |
 |----------|--------------|---------------|------------------|
 | ... | ... | ... | ... |
-```
+\`\`\`
 
 3. **Prioritize fixes** by impact score (10 = critical, 1 = minor)
 
@@ -39,7 +39,7 @@ Before making ANY changes, perform a complete diagnostic:
 Execute fixes in order of priority (highest impact first). For each fix:
 
 #### FIX TEMPLATE
-```
+\`\`\`
 ## FIX [N]: [Brief Description]
 **Impact**: [1-10]
 **Files Modified**: [list]
@@ -47,7 +47,7 @@ Execute fixes in order of priority (highest impact first). For each fix:
 **Solution**: [1-2 sentence explanation]
 
 [Complete updated code for affected files]
-```
+\`\`\`
 
 ---
 
@@ -150,7 +150,7 @@ After implementing each fix, verify:
 
 For each fix you implement, respond with:
 
-```
+\`\`\`
 ✅ FIX [N] COMPLETE: [Name]
 
 **Changes Made**:
@@ -163,7 +163,7 @@ For each fix you implement, respond with:
 - [actual result]
 
 **Next Fix**: [name of next fix or "All fixes complete"]
-```
+\`\`\`
 
 ---
 

@@ -4,7 +4,7 @@
 
 Create this table in your Supabase dashboard (SQL Editor):
 
-```sql
+\`\`\`sql
 CREATE TABLE planner_state (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id TEXT NOT NULL UNIQUE,
@@ -17,7 +17,7 @@ CREATE TABLE planner_state (
 
 CREATE INDEX idx_planner_state_user_id ON planner_state(user_id);
 CREATE INDEX idx_planner_state_updated_at ON planner_state(updated_at);
-```
+\`\`\`
 
 ## Environment Variables
 
