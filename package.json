@@ -3,10 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "next build",
-    "dev": "next dev -p 5000 -H 0.0.0.0",
-    "lint": "next lint",
-    "start": "next start -p 5000 -H 0.0.0.0"
+    "build": "pnpm check:env && pnpm exec tsc --noEmit && pnpm lint && next build",
+    "dev": "pnpm check:env && next dev -p 5000 -H 0.0.0.0",
+    "lint": "eslint . --max-warnings=0",
+    "start": "pnpm check:env && next start -p 5000 -H 0.0.0.0",
+    "check:env": "node scripts/check-env.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
