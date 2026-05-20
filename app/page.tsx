@@ -1,7 +1,5 @@
-"use client"
-
-import { PlannerApp } from "@/components/planner/planner-app"
+import { redirect } from "next/navigation"
 
 export default function Page() {
-  return <PlannerApp />
+  redirect("/app")
 }
