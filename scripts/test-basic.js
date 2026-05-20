@@ -1,5 +1,0 @@
-console.log("[v0] Script is running!")
-console.log("[v0] Testing basic functionality...")
-console.log("[v0] If you see this, scripts are working!")
-console.log("[v0] PDF generation requires Puppeteer browser binaries to be installed")
-console.log("[v0] Try running the original generate-pdf.js script")
