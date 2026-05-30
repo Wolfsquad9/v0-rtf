@@ -1,87 +1,144 @@
 import { NextResponse } from "next/server";
 import {
-  getRateLimitKey,
-  checkRateLimit,
-  validateDayData,
+  aiCoachRequestSchema,
+  checkUserRateLimit,
   sanitizeDayData,
 } from "@/lib/api-security";
+import {
+  createSupabaseClientWithToken,
+  extractBearerToken,
+  getAuthenticatedUserId,
+} from "@/lib/supabase";
+
+interface AICoachResponse {
+  strengthTrend: string;
+  recoveryStatus: string;
+  techniqueFlags: string[];
+  recommendedChanges: string[];
+}
+
+const FALLBACK_RESPONSE: AICoachResponse = {
+  strengthTrend: "Analysis unavailable.",
+  recoveryStatus: "Please try again later.",
+  techniqueFlags: [],
+  recommendedChanges: ["Review your logged sets, reps, load, and RPE before your next session."],
+};
+
+const TEST_MODE_RESPONSE: AICoachResponse = {
+  strengthTrend: "Test mode: logged training data indicates a stable strength trend.",
+  recoveryStatus: "Test mode: recovery status is acceptable for continued training.",
+  techniqueFlags: ["Test mode: keep movement quality consistent across working sets."],
+  recommendedChanges: [
+    "Test mode: maintain current load until real AI coaching is enabled.",
+    "Test mode: continue logging RPE after each session.",
+  ],
+};
+
+const EMPTY_WORKOUT_RESPONSE: AICoachResponse = {
+  strengthTrend: "No meaningful training data logged yet.",
+  recoveryStatus: "Recovery cannot be assessed until workout data is entered.",
+  techniqueFlags: [],
+  recommendedChanges: ["Log at least one exercise with sets, reps, load, or RPE notes."],
+};
+
+function normalizeAICoachResponse(value: unknown): AICoachResponse {
+  if (!value || typeof value !== "object") {
+    return FALLBACK_RESPONSE;
+  }
+
+  const candidate = value as Partial<AICoachResponse>;
+
+  return {
+    strengthTrend:
+      typeof candidate.strengthTrend === "string" && candidate.strengthTrend.trim()
+        ? candidate.strengthTrend
+        : FALLBACK_RESPONSE.strengthTrend,
+    recoveryStatus:
+      typeof candidate.recoveryStatus === "string" && candidate.recoveryStatus.trim()
+        ? candidate.recoveryStatus
+        : FALLBACK_RESPONSE.recoveryStatus,
+    techniqueFlags: Array.isArray(candidate.techniqueFlags)
+      ? candidate.techniqueFlags.filter((item): item is string => typeof item === "string")
+      : [],
+    recommendedChanges: Array.isArray(candidate.recommendedChanges)
+      ? candidate.recommendedChanges.filter((item): item is string => typeof item === "string")
+      : FALLBACK_RESPONSE.recommendedChanges,
+  };
+}
 
 export async function POST(req: Request) {
   try {
-    // 1. RATE LIMITING
-    const rateLimitKey = getRateLimitKey(req);
-    const { allowed, remaining } = checkRateLimit(rateLimitKey);
+    const token = extractBearerToken(req);
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
+    const client = createSupabaseClientWithToken(token);
+    if (!client) {
+      return NextResponse.json({ error: "Supabase not configured" }, { status: 500 });
+    }
+
+    const userId = await getAuthenticatedUserId(client);
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    let rawBody: unknown;
+    try {
+      rawBody = await req.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+    }
+
+    const parsedBody = aiCoachRequestSchema.safeParse(rawBody);
+    if (!parsedBody.success) {
+      return NextResponse.json({ error: "Invalid day data format" }, { status: 400 });
+    }
+
+    const { allowed, remaining, resetTime } = checkUserRateLimit(userId);
     if (!allowed) {
+      const retryAfterSeconds = Math.max(1, Math.ceil((resetTime - Date.now()) / 1000));
+      console.warn(`[AI Coach] Rate limit exceeded for userId=${userId}`);
       return NextResponse.json(
         { error: "Too many requests. Please wait a moment." },
         {
           status: 429,
-          headers: { "Retry-After": "60" },
+          headers: { "Retry-After": retryAfterSeconds.toString() },
         },
       );
     }
 
-    // 2. REQUEST VALIDATION
-    let body;
-    try {
-      body = await req.json();
-    } catch {
-      return NextResponse.json(
-        { error: "Invalid request body" },
-        { status: 400 },
-      );
-    }
+    const isTestMode = process.env.AI_COACH_TEST_MODE === "true";
+    console.info(`[AI Coach] Request accepted for userId=${userId} testMode=${isTestMode}`);
 
-    const { dayData } = body;
-
-    // Validate input
-    if (!validateDayData(dayData)) {
-      return NextResponse.json(
-        { error: "Invalid day data format" },
-        { status: 400 },
-      );
-    }
-
-    // Sanitize input to prevent injection
-    const sanitized = sanitizeDayData(dayData);
-
+    const sanitized = sanitizeDayData(parsedBody.data.dayData);
     const meaningful = sanitized.training.filter(
-      (ex: any) =>
-        ex.name || ex.rpeNotes || ex.sets > 0 || ex.reps > 0 || ex.loadKg > 0,
+      (ex) => ex.name || ex.rpeNotes || ex.sets > 0 || ex.reps > 0 || ex.loadKg > 0,
     );
 
+    const responseHeaders = new Headers({
+      "X-RateLimit-Remaining": remaining.toString(),
+      "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+      "Content-Type": "application/json",
+    });
+
     if (meaningful.length === 0) {
-      return NextResponse.json({
-        empty: true,
-        demoMode: false,
-      });
+      return NextResponse.json(EMPTY_WORKOUT_RESPONSE, { headers: responseHeaders });
     }
 
-    // 3. GET API KEY FROM SERVER ONLY (NOT FROM CLIENT)
+    if (isTestMode) {
+      return NextResponse.json(TEST_MODE_RESPONSE, { headers: responseHeaders });
+    }
+
     const apiKey = process.env.ANTHROPIC_API_KEY;
-
-    // DEMO MODE - no API key configured
     if (!apiKey || apiKey === "TEST") {
-      return NextResponse.json({
-        strengthTrend: "Maintaining strength with stable RPE.",
-        recoveryStatus: "Moderate fatigue — consider light mobility.",
-        techniqueFlags: ["Watch lower-back rounding on hinge movements."],
-        recommendedChanges: [
-          "Add 1–2% load next week.",
-          "Add 1 extra back-off set.",
-        ],
-        demoMode: true,
-      });
+      return NextResponse.json(TEST_MODE_RESPONSE, { headers: responseHeaders });
     }
 
-    // 4. CALL ANTHROPIC API WITH SERVER-SIDE KEY
     const prompt = `
-You are an expert strength coach. Analyze this workout:
+You are an expert strength coach. Analyze this workout.
 
-${JSON.stringify(meaningful, null, 2)}
-
-Respond ONLY in JSON:
+Respond ONLY in JSON with this exact shape:
 {
   "strengthTrend": "...",
   "recoveryStatus": "...",
@@ -91,9 +148,9 @@ Respond ONLY in JSON:
 `;
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 30_000);
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
+    const anthropicResponse = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
         "x-api-key": apiKey,
@@ -103,82 +160,43 @@ Respond ONLY in JSON:
       body: JSON.stringify({
         model: "claude-3-5-sonnet-20241022",
         max_tokens: 400,
-        messages: [{ role: "user", content: prompt }],
+        messages: [
+          {
+            role: "user",
+            content: `${prompt}\nWorkout summary:\n${JSON.stringify(meaningful)}`,
+          },
+        ],
       }),
       signal: controller.signal,
     });
 
     clearTimeout(timeoutId);
 
-    if (!response.ok) {
-      console.error(
-        "[AI Coach] Anthropic API error:",
-        response.status,
-        response.statusText,
-      );
-
-      // Return demo if API fails
-      return NextResponse.json({
-        strengthTrend: "API temporarily unavailable",
-        recoveryStatus: "Falling back to demo analysis",
-        techniqueFlags: [],
-        recommendedChanges: ["Check back in a moment"],
-        demoMode: true,
-      });
+    if (!anthropicResponse.ok) {
+      console.error(`[AI Coach] Anthropic API error for userId=${userId}: ${anthropicResponse.status}`);
+      return NextResponse.json(FALLBACK_RESPONSE, { headers: responseHeaders });
     }
 
-    const data = await response.json();
-
-    // Defensive parsing with guaranteed shape
-    let parsed: any = {
-      strengthTrend: "Analysis unavailable",
-      recoveryStatus: "Please try again",
-      techniqueFlags: [],
-      recommendedChanges: [],
-    };
+    const data = await anthropicResponse.json();
+    let parsedAnalysis: unknown = null;
 
     try {
       const text = data.content?.[0]?.text;
-      if (!text || typeof text !== "string") {
-        console.error("[AI Coach] No text in response:", data);
-      } else {
-        const extracted = JSON.parse(text);
-
-        // Merge extracted with defaults to ensure all fields exist
-        parsed = {
-          strengthTrend: extracted?.strengthTrend || "Analysis unavailable",
-          recoveryStatus: extracted?.recoveryStatus || "Please try again",
-          techniqueFlags: Array.isArray(extracted?.techniqueFlags)
-            ? extracted.techniqueFlags
-            : [],
-          recommendedChanges: Array.isArray(extracted?.recommendedChanges)
-            ? extracted.recommendedChanges
-            : [],
-        };
+      if (typeof text === "string") {
+        parsedAnalysis = JSON.parse(text);
       }
-    } catch (e) {
-      console.error("[AI Coach] Parse error:", e);
-      // Keep defaults already set
+    } catch {
+      console.error(`[AI Coach] Failed to parse Anthropic response for userId=${userId}`);
     }
 
-    // 5. ADD SECURITY HEADERS
-    const responseHeaders = new Headers({
-      "X-RateLimit-Remaining": remaining.toString(),
-      "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
-      "Content-Type": "application/json",
-    });
-
-    return NextResponse.json(parsed, { headers: responseHeaders });
+    return NextResponse.json(normalizeAICoachResponse(parsedAnalysis), { headers: responseHeaders });
   } catch (err: any) {
     if (err.name === "AbortError") {
       console.error("[AI Coach] Request timeout");
-      return NextResponse.json({ error: "Request timeout" }, { status: 504 });
+      return NextResponse.json(FALLBACK_RESPONSE, { status: 504 });
     }
 
-    console.error("[AI Coach] Unexpected error:", err);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
+    console.error("[AI Coach] Unexpected error");
+    return NextResponse.json(FALLBACK_RESPONSE, { status: 500 });
   }
 }
