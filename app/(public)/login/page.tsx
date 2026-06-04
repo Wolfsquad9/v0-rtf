@@ -18,23 +18,31 @@ export default function LoginPage() {
     setError(null)
 
     try {
+      console.log("[v0] Creating Supabase client...")
       const supabase = createClient()
       
-      const { error: authError } = await supabase.auth.signInWithPassword({
+      console.log("[v0] Attempting signInWithPassword for:", email.trim())
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
       })
+      
+      console.log("[v0] Auth response - data:", data, "error:", authError)
 
       if (authError) {
+        console.error("[v0] Auth error:", authError)
         setError(authError.message)
         setLoading(false)
         return
       }
 
+      console.log("[v0] Login successful, redirecting to /app")
       router.replace("/app")
       router.refresh()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An unexpected error occurred. Please try again.")
+      console.error("[v0] Caught exception:", err)
+      const errorMessage = err instanceof Error ? err.message : String(err)
+      setError(errorMessage || "An unexpected error occurred. Please try again.")
       setLoading(false)
     }
   }
