@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
 import type { Session, User } from "@supabase/supabase-js"
-import { supabase } from "@/lib/supabase-client"
+import { createClient } from "@/lib/supabase/client"
 
 interface AuthContextType {
   session: Session | null
@@ -13,28 +13,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-const syncAuthCookies = async (session: Session | null) => {
-  if (!session) {
-    await fetch("/api/auth/session", {
-      method: "DELETE",
-      credentials: "same-origin",
-    })
-    return
-  }
-
-  await fetch("/api/auth/session", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    credentials: "same-origin",
-    body: JSON.stringify({
-      accessToken: session.access_token,
-      refreshToken: session.refresh_token,
-    }),
-  })
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
@@ -42,6 +20,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let mounted = true
+    const supabase = createClient()
 
     const init = async () => {
       const { data, error } = await supabase.auth.getSession()
@@ -50,13 +29,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error) {
         console.error("Session fetch failed:", error)
         setSession(null)
-        await syncAuthCookies(null)
         setLoading(false)
         return
       }
 
       setSession(data.session ?? null)
-      await syncAuthCookies(data.session ?? null)
       setLoading(false)
     }
 
@@ -66,7 +43,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession)
-      void syncAuthCookies(nextSession)
     })
 
     return () => {

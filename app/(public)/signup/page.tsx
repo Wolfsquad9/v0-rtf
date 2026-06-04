@@ -1,8 +1,9 @@
 "use client"
 
+import Link from "next/link"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { supabase } from "@/lib/supabase-client"
+import { createClient } from "@/lib/supabase/client"
 
 export default function SignupPage() {
   const [email, setEmail] = useState("")
@@ -18,24 +19,37 @@ export default function SignupPage() {
     setError(null)
     setMessage(null)
 
-    const { data, error: authError } = await supabase.auth.signUp({
-      email: email.trim(),
-      password,
-    })
+    try {
+      const supabase = createClient()
+      
+      const { data, error: authError } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          emailRedirectTo:
+            process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ??
+            `${window.location.origin}/auth/callback`,
+        },
+      })
 
-    if (authError) {
-      setError(authError.message)
+      if (authError) {
+        setError(authError.message)
+        setLoading(false)
+        return
+      }
+
+      if (data.session) {
+        router.replace("/app")
+        router.refresh()
+        return
+      }
+
+      setMessage("Account created. Check your email to confirm your account.")
       setLoading(false)
-      return
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An unexpected error occurred. Please try again.")
+      setLoading(false)
     }
-
-    if (data.session) {
-      router.replace("/app")
-      return
-    }
-
-    setMessage("Account created. Check your email to confirm your account.")
-    setLoading(false)
   }
 
   return (
@@ -77,6 +91,13 @@ export default function SignupPage() {
         <button type="submit" disabled={loading} className="w-full border px-3 py-2">
           {loading ? "Creating account..." : "Sign Up"}
         </button>
+
+        <p className="text-sm">
+          Already have an account?{" "}
+          <Link href="/login" className="underline">
+            Login
+          </Link>
+        </p>
       </form>
     </main>
   )

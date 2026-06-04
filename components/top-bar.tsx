@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
-import { supabase } from "@/lib/supabase-client"
+import { createClient } from "@/lib/supabase/client"
 import { useAuth } from "@/components/auth-provider"
 
 export function TopBar() {
@@ -22,8 +22,10 @@ export function TopBar() {
         onClick={async () => {
           if (isLoggingOut) return
           setIsLoggingOut(true)
+          const supabase = createClient()
           await supabase.auth.signOut()
           router.replace("/login")
+          router.refresh()
         }}
         className="text-sm underline disabled:opacity-60"
         disabled={isLoggingOut}

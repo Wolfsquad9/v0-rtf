@@ -1,6 +1,6 @@
 import type { PlannerState } from "@/types/planner"
 import { logError } from "@/lib/error-handler"
-import { supabase } from "@/lib/supabase-client"
+import { createClient } from "@/lib/supabase/client"
 
 const STORAGE_KEY = "rtf_planner_state_v1"
 const LAST_SYNC_KEY = "rtf_planner_last_sync_v1"
@@ -40,6 +40,7 @@ export const saveState = (state: PlannerState): void => {
     localStorage.setItem(STORAGE_KEY, serialized)
 
     // Try to sync to Supabase in background (non-blocking)
+    const supabase = createClient()
     supabase.auth.getSession()
       .then(({ data }) => {
         const token = data.session?.access_token
@@ -82,6 +83,7 @@ export const loadStateFromDatabase = async (): Promise<PlannerState | null> => {
   if (typeof window === "undefined") return null
 
   try {
+    const supabase = createClient()
     const { data } = await supabase.auth.getSession()
     const token = data.session?.access_token
 
